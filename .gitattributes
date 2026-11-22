@@ -1,0 +1,17 @@
+# Fins de ligne normalisees : LF dans le depot, CRLF pour les scripts Windows
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binaires
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+*.xlsx binary
+*.woff binary
+*.woff2 binary

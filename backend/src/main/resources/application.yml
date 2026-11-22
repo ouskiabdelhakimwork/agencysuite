@@ -1,0 +1,34 @@
+# Configuration commune. Aucun secret ici : les secrets viendront des variables
+# d'environnement ou du coffre de secrets (06-conventions-code.md).
+spring:
+  application:
+    name: agencysuite
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  mvc:
+    problemdetails:
+      # Erreurs au format RFC 9457 (application/problem+json)
+      enabled: true
+  threads:
+    virtual:
+      # Threads virtuels (Java 21+) : beaucoup de requetes concurrentes sans grossir le pool
+      enabled: true
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        # Sondes liveness/readiness pour Kubernetes
+        enabled: true
+
+springdoc:
+  paths-to-match: /api/**
