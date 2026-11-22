@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "AgencySuite",
+    "tagline": "Gestion d'agence de voyage et MICE"
+  },
+  "shell": {
+    "language": "Langue"
+  },
+  "home": {
+    "title": "Bienvenue",
+    "intro": "Socle technique de l'étape 1 : langues, sens d'écriture et liaison avec l'API.",
+    "backendTitle": "État de l'API",
+    "loading": "Connexion à l'API…",
+    "error": "L'API ne répond pas. Lancez le backend sur le port 8080.",
+    "version": "Version",
+    "serverLanguage": "Langue renvoyée par le serveur",
+    "direction": "Sens d'écriture",
+    "serverMessage": "Message du serveur"
+  }
+}

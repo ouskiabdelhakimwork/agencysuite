@@ -1,0 +1,26 @@
+<section class="home">
+  <h1>{{ 'home.title' | translate }}</h1>
+  <p class="intro">{{ 'home.intro' | translate }}</p>
+
+  <article class="card">
+    <h2>{{ 'home.backendTitle' | translate }}</h2>
+
+    @let state = backend();
+    @if (state.status === 'ok') {
+      <dl>
+        <dt>{{ 'home.version' | translate }}</dt>
+        <dd>{{ state.info.version }}</dd>
+        <dt>{{ 'home.serverLanguage' | translate }}</dt>
+        <dd>{{ state.info.locale }}</dd>
+        <dt>{{ 'home.direction' | translate }}</dt>
+        <dd>{{ state.info.direction }}</dd>
+        <dt>{{ 'home.serverMessage' | translate }}</dt>
+        <dd>{{ state.info.welcome }}</dd>
+      </dl>
+    } @else if (state.status === 'error') {
+      <p class="error" role="alert">{{ 'home.error' | translate }}</p>
+    } @else {
+      <p class="muted">{{ 'home.loading' | translate }}</p>
+    }
+  </article>
+</section>

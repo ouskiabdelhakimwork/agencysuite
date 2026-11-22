@@ -1,0 +1,39 @@
+// Styles globaux. Regle : uniquement des proprietes CSS logiques
+// (margin-inline-start, padding-block, inset-inline-end...) pour que
+// l'interface se retourne d'elle-meme en arabe (06-conventions-code.md).
+
+:root {
+  --color-primary: #0f5b78;
+  --color-text: #1d2733;
+  --color-muted: #5b6875;
+  --color-border: #d9dee3;
+  --color-surface: #ffffff;
+  --color-background: #f5f7f9;
+  --color-danger: #b42318;
+
+  --font-latin: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  // Polices systeme qui couvrent bien l'arabe sous Windows, macOS et Android
+  --font-arabic: 'Segoe UI', Tahoma, 'Geeza Pro', 'Noto Sans Arabic', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-latin);
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+html[lang='ar'] {
+  font-family: var(--font-arabic);
+  // L'arabe gagne en lisibilite avec un interligne un peu plus grand
+  line-height: 1.7;
+}
+
+body {
+  margin: 0;
+}

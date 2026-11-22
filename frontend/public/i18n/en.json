@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "AgencySuite",
+    "tagline": "Travel agency and MICE management"
+  },
+  "shell": {
+    "language": "Language"
+  },
+  "home": {
+    "title": "Welcome",
+    "intro": "Step 1 technical foundation: languages, text direction and API connection.",
+    "backendTitle": "API status",
+    "loading": "Connecting to the API…",
+    "error": "The API is not responding. Start the backend on port 8080.",
+    "version": "Version",
+    "serverLanguage": "Language returned by the server",
+    "direction": "Text direction",
+    "serverMessage": "Server message"
+  }
+}
