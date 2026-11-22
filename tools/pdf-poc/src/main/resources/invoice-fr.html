@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Facture F-2026-000123</title>
+  <style>
+    @page { size: A4; margin: 18mm 15mm; }
+    body { font-family: Arial, sans-serif; font-size: 10.5pt; color: #1d2733; }
+    .header { width: 100%; border-bottom: 2px solid #0f5b78; padding-bottom: 8px; margin-bottom: 16px; }
+    .agency { font-size: 16pt; font-weight: bold; color: #0f5b78; }
+    .muted { color: #5b6875; font-size: 9pt; }
+    .title { font-size: 14pt; font-weight: bold; margin: 12px 0 4px 0; }
+    table.lines { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    table.lines th { background: #0f5b78; color: #ffffff; padding: 6px; text-align: start; }
+    table.lines td { border-bottom: 1px solid #d9dee3; padding: 6px; }
+    .num { text-align: end; white-space: nowrap; }
+    table.totals { margin-top: 12px; margin-inline-start: auto; border-collapse: collapse; }
+    table.totals td { padding: 4px 8px; }
+    .grand { font-weight: bold; font-size: 12pt; border-top: 2px solid #0f5b78; }
+    .note { margin-top: 24px; font-size: 9pt; color: #5b6875; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="agency">Agence Atlas Voyages</div>
+    <div class="muted">12, avenue Mohammed V, Marrakech · ICE 001234567000089 · IF 12345678 · RC 98765 · contact@atlas-voyages.example</div>
+  </div>
+
+  <div class="title">Facture n° F-2026-000123</div>
+  <div>Date : 22/11/2026 · Échéance : 22/12/2026</div>
+  <div>Client : Société Exemple SARL · ICE 002345678000012 · Casablanca</div>
+  <div>Dossier : D-2026-0456 · Séjour Marrakech et désert, 3 participants</div>
+
+  <table class="lines">
+    <thead>
+      <tr><th>Désignation</th><th class="num">Qté</th><th class="num">Prix unitaire</th><th class="num">Montant HT</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Hébergement riad, Marrakech (3 nuits, chambre double)</td><td class="num">2</td><td class="num">1 250,00 MAD</td><td class="num">2 500,00 MAD</td></tr>
+      <tr><td>Transfert aéroport Marrakech-Ménara (aller-retour)</td><td class="num">1</td><td class="num">600,00 MAD</td><td class="num">600,00 MAD</td></tr>
+      <tr><td>Excursion désert d'Agafay, dîner et bivouac</td><td class="num">3</td><td class="num">950,00 MAD</td><td class="num">2 850,00 MAD</td></tr>
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Total HT</td><td class="num">5 950,00 MAD</td></tr>
+    <tr><td>TVA 20 %</td><td class="num">1 190,00 MAD</td></tr>
+    <tr class="grand"><td>Total TTC</td><td class="num">7 140,00 MAD</td></tr>
+  </table>
+
+  <div class="note">Document de test, données fictives. Le régime de TVA réel reste à valider par un expert-comptable (RG-01).</div>
+</body>
+</html>
