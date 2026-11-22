@@ -1,0 +1,40 @@
+{
+  "realm": "agencysuite",
+  "enabled": true,
+  "displayName": "AgencySuite",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "ar", "en"],
+  "defaultLocale": "fr",
+  "organizationsEnabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "passwordPolicy": "length(12) and notUsername and notEmail",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@agencysuite.local",
+    "fromDisplayName": "AgencySuite (local)"
+  },
+  "clients": [
+    {
+      "clientId": "agencysuite-frontend",
+      "name": "AgencySuite - application web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:4200/*"],
+      "webOrigins": ["http://localhost:4200"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*"
+      }
+    }
+  ]
+}

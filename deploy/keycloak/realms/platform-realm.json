@@ -1,0 +1,32 @@
+{
+  "realm": "platform",
+  "enabled": true,
+  "displayName": "AgencySuite - back-office editeur",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "ar", "en"],
+  "defaultLocale": "fr",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "passwordPolicy": "length(14) and notUsername and notEmail",
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": true,
+      "priority": 10
+    }
+  ],
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@agencysuite.local",
+    "fromDisplayName": "AgencySuite (local)"
+  }
+}

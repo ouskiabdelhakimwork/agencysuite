@@ -1,0 +1,106 @@
+# Environnement local de developpement AgencySuite (etape 1, lot 3).
+#
+# Demarrage (depuis le dossier deploy/) :
+#   copy .env.example .env        (une seule fois, puis adapter les mots de passe)
+#   docker compose up -d          pile de base
+#   docker compose --profile full up -d   pile complete (+ antivirus et rendu PDF)
+#
+# Tous les ports sont publies sur 127.0.0.1 uniquement : rien n'est expose au reseau
+# de l'entreprise. Usage local seulement, jamais en recette ou en production.
+
+name: agencysuite
+
+services:
+
+  # Base de donnees de l'application et de Keycloak (ADR-04, ADR-08)
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: agencysuite
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      TZ: UTC
+    volumes:
+      # PostgreSQL 18 : le volume se monte sur /var/lib/postgresql (et non plus .../data)
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d agencysuite"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Fournisseur d'identite (ADR-08) : realms agencysuite et platform importes au demarrage
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://localhost:8180
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realms:/opt/keycloak/data/import:ro
+    ports:
+      - "127.0.0.1:8180:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Stockage objet compatible S3 pour le developpement et les tests (remplace MinIO, ADR-09).
+  # Sans authentification en local ; la production utilisera l'offre S3 de l'hebergeur.
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    command: ["server", "-s3", "-dir=/data"]
+    volumes:
+      - seaweedfs-data:/data
+    ports:
+      - "127.0.0.1:8333:8333"   # API S3
+
+  # File de messages (ADR-10)
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "127.0.0.1:5672:5672"     # AMQP
+      - "127.0.0.1:15672:15672"   # console web
+
+  # Fausse boite e-mail : capture tous les e-mails envoyes en local (Keycloak, devis...)
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"   # interface web
+      - "127.0.0.1:1025:1025"   # SMTP
+
+  # Antivirus (ADR-12). Lourd : ~2 Go de memoire et telechargement des signatures au demarrage.
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["full"]
+    volumes:
+      - clamav-data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:3310:3310"
+
+  # Rendu PDF par Chromium (ADR-13)
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    profiles: ["full"]
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  postgres-data:
+  seaweedfs-data:
+  rabbitmq-data:
+  clamav-data:
