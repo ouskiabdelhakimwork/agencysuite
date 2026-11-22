@@ -1,0 +1,59 @@
+# CI du backend : compilation, tests unitaires et d'integration, verification
+# des frontieres entre modules (Spring Modulith).
+# Les etapes image Docker, analyse statique et deploiement seront ajoutees
+# dans les lots suivants (06-conventions-code.md, section 6).
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # Le wrapper genere sous Windows n'a pas le droit d'execution : on passe par sh
+      - name: Build et tests
+        run: sh ./mvnw -B -ntp verify
+
+      - name: Rapports de tests (en cas d'echec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports
+          retention-days: 7
+
+      - name: Diagrammes des modules
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-modulith-docs
+          path: backend/target/spring-modulith-docs
+          retention-days: 30
