@@ -5,10 +5,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ma.agencysuite.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,6 +22,7 @@ import org.springframework.web.context.WebApplicationContext;
  * sens d'ecriture, format d'erreur RFC 9457 et documentation OpenAPI.
  */
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 class PlatformInfoApiTest {
 
     @Autowired
