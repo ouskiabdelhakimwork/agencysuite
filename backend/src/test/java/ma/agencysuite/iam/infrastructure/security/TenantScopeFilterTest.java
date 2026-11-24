@@ -1,8 +1,11 @@
 package ma.agencysuite.iam.infrastructure.security;
 
 import static ma.agencysuite.TestTokens.agency;
+import static ma.agencysuite.TestTokens.agencyUser;
 import static ma.agencysuite.TestTokens.agencyWithOrganizations;
 import static ma.agencysuite.TestTokens.agencyWithoutOrganization;
+import static ma.agencysuite.TestTokens.platform;
+import static ma.agencysuite.TestTokens.platformUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -12,7 +15,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import ma.agencysuite.TestTokens;
 import ma.agencysuite.TestcontainersConfiguration;
+import ma.agencysuite.iam.IamTestData;
+import ma.agencysuite.iam.domain.PlatformUserStatus;
+import ma.agencysuite.iam.domain.UserStatus;
 import ma.agencysuite.platform.PlatformTestData;
 import ma.agencysuite.shared.module.ModuleCode;
 import org.hamcrest.Matchers;
@@ -25,19 +32,26 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-/** Ouverture du perimetre agence a partir du claim organization du jeton. */
+/**
+ * Ouverture du perimetre agence a partir du claim organization du jeton, puis resolution de
+ * l'utilisateur (ACTIVE dans cette agence) ; membre ACTIVE de l'editeur pour le back-office.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 class TenantScopeFilterTest {
 
     private static final String ME_MODULES = "/api/v1/me/modules";
+    private static final String BACKOFFICE_AGENCY = "/api/v1/backoffice/agencies/";
 
     @Autowired
     private MockMvc mvc;
     @Autowired
     private PlatformTestData data;
+    @Autowired
+    private IamTestData iam;
 
     private final String suffix = PlatformTestData.randomSuffix();
     private UUID agencyA;
@@ -114,5 +128,54 @@ class TenantScopeFilterTest {
         assertThat(suspended).contains("urn:agencysuite:problem:agency-unavailable").isEqualTo(unknown);
         // L'autre agence n'est pas affectee
         mvc.perform(get(ME_MODULES).with(agency(agencyB))).andExpect(status().isOk());
+    }
+
+    @Test
+    void validTokenWithUnknownSubIsAccessDenied() throws Exception {
+        expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, UUID.randomUUID().toString())));
+    }
+
+    @Test
+    void disabledOrInvitedUserIsAccessDeniedWithTheSameAnswerAsAnUnknownOne() throws Exception {
+        String disabled = iam.createUser(agencyA, UserStatus.ACTIVE, "MANAGER");
+        mvc.perform(get(ME_MODULES).with(agencyUser(agencyA, disabled))).andExpect(status().isOk());
+        iam.disableUser(agencyA, disabled);
+        String invited = iam.createUser(agencyA, UserStatus.INVITED, "MANAGER");
+
+        String disabledAnswer = expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, disabled)));
+        String invitedAnswer = expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, invited)));
+        String unknownAnswer = expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, UUID.randomUUID().toString())));
+
+        assertThat(disabledAnswer).isEqualTo(unknownAnswer).isEqualTo(invitedAnswer);
+    }
+
+    @Test
+    void userOfAnotherAgencyThanTheTokenOrganizationIsAccessDenied() throws Exception {
+        // Le sub est celui du gerant de B, mais le jeton designe l'Organization de A.
+        expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, TestTokens.managerSub(agencyB))));
+    }
+
+    @Test
+    void platformTokenWithoutPlatformUserIsAccessDenied() throws Exception {
+        expectAccessDenied(get(BACKOFFICE_AGENCY + agencyA).with(platformUser(UUID.randomUUID().toString())));
+    }
+
+    @Test
+    void disabledPlatformUserIsAccessDenied() throws Exception {
+        String disabled = iam.createPlatformUser(PlatformUserStatus.DISABLED);
+        try {
+            expectAccessDenied(get(BACKOFFICE_AGENCY + agencyA).with(platformUser(disabled)));
+        } finally {
+            iam.deletePlatformUser(disabled);
+        }
+        mvc.perform(get(BACKOFFICE_AGENCY + agencyA).with(platform())).andExpect(status().isOk());
+    }
+
+    private String expectAccessDenied(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request)
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:access-denied"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
     }
 }

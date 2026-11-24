@@ -6,9 +6,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import ma.agencysuite.iam.application.CurrentUserResolver;
 import ma.agencysuite.platform.PlatformApi;
+import ma.agencysuite.shared.security.CurrentUser;
 import ma.agencysuite.shared.tenant.AgencyId;
 import ma.agencysuite.shared.tenant.TenantContext;
 import org.slf4j.Logger;
@@ -27,12 +30,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * authentifiees et autorisees (bon realm) arrivent ici avec un jeton.
  *
  * <ul>
- *   <li>Chaine du back-office : jeton du realm "platform" &rarr; perimetre plateforme.</li>
+ *   <li>Chaine du back-office : jeton du realm "platform" &rarr; perimetre plateforme, si le
+ *       {@code sub} est celui d'un membre ACTIVE de l'editeur (table platform_user).</li>
  *   <li>Chaine des agences : jeton du realm "agencysuite" &rarr; perimetre de l'agence lue dans le
  *       claim {@code organization}. Ce claim est la liste des alias des Organizations Keycloak de
  *       l'utilisateur ; l'alias est l'UUID de l'agence. Exactement une Organization est attendue.
- *       L'agence doit exister et etre operationnelle (verifie dans son propre perimetre).</li>
+ *       L'agence doit exister et etre operationnelle (verifie dans son propre perimetre), puis le
+ *       {@code sub} doit etre celui d'un utilisateur ACTIVE de cette agence : la suite de la
+ *       chaine s'execute alors avec cet utilisateur et ses permissions ({@code UserContext}).</li>
  * </ul>
+ *
+ * <p>Un jeton valide ne suffit donc pas (ferme par defaut) : utilisateur inconnu, invite ou
+ * desactive &rarr; 403 access-denied, sans distinguer les cas. Aucune ecriture en base ici.
  *
  * <p>Requete sans jeton du realm attendu (route publique) : pas de perimetre, donc rien de visible.
  * Le jeton et l'e-mail ne sont jamais journalises ; seuls {@code sub} (pseudonyme) et l'UUID de
@@ -52,21 +61,25 @@ final class TenantScopeFilter extends OncePerRequestFilter {
     private final Scope scope;
     private final String issuer;
     private final PlatformApi platform;
+    private final CurrentUserResolver users;
     private final SecurityProblems problems;
 
-    private TenantScopeFilter(Scope scope, String issuer, PlatformApi platform, SecurityProblems problems) {
+    private TenantScopeFilter(Scope scope, String issuer, PlatformApi platform, CurrentUserResolver users,
+            SecurityProblems problems) {
         this.scope = scope;
         this.issuer = issuer;
         this.platform = platform;
+        this.users = users;
         this.problems = problems;
     }
 
-    static TenantScopeFilter platform(String platformIssuer, SecurityProblems problems) {
-        return new TenantScopeFilter(Scope.PLATFORM, platformIssuer, null, problems);
+    static TenantScopeFilter platform(String platformIssuer, CurrentUserResolver users, SecurityProblems problems) {
+        return new TenantScopeFilter(Scope.PLATFORM, platformIssuer, null, users, problems);
     }
 
-    static TenantScopeFilter agency(String agencyIssuer, PlatformApi platform, SecurityProblems problems) {
-        return new TenantScopeFilter(Scope.AGENCY, agencyIssuer, platform, problems);
+    static TenantScopeFilter agency(String agencyIssuer, PlatformApi platform, CurrentUserResolver users,
+            SecurityProblems problems) {
+        return new TenantScopeFilter(Scope.AGENCY, agencyIssuer, platform, users, problems);
     }
 
     @Override
@@ -80,8 +93,16 @@ final class TenantScopeFilter extends OncePerRequestFilter {
         }
         Jwt jwt = token.getToken();
         if (scope == Scope.PLATFORM) {
-            LOG.debug("Perimetre plateforme pour sub={}", jwt.getSubject());
-            ScopedChain.runAsPlatform(chain, request, response);
+            ScopedChain.runAsPlatform(() -> {
+                if (!users.isActivePlatformUser(jwt.getSubject())) {
+                    // Meme reponse pour un membre inconnu ou desactive.
+                    LOG.debug("Membre de l'editeur inconnu ou inactif : sub={}", jwt.getSubject());
+                    problems.write(request, response, HttpStatus.FORBIDDEN, "access-denied");
+                    return;
+                }
+                LOG.debug("Perimetre plateforme pour sub={}", jwt.getSubject());
+                chain.doFilter(request, response);
+            });
             return;
         }
 
@@ -105,8 +126,15 @@ final class TenantScopeFilter extends OncePerRequestFilter {
                 problems.write(request, response, HttpStatus.FORBIDDEN, "agency-unavailable");
                 return;
             }
+            Optional<CurrentUser> user = users.resolveAgencyUser(jwt.getSubject());
+            if (user.isEmpty()) {
+                // Meme reponse pour un utilisateur inconnu dans cette agence, invite ou desactive.
+                LOG.debug("Utilisateur inconnu ou inactif dans l'agence {} : sub={}", agencyId, jwt.getSubject());
+                problems.write(request, response, HttpStatus.FORBIDDEN, "access-denied");
+                return;
+            }
             LOG.debug("Perimetre agence {} pour sub={}", agencyId, jwt.getSubject());
-            chain.doFilter(request, response);
+            ScopedChain.runAsUser(user.get(), chain, request, response);
         });
     }
 

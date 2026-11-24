@@ -74,6 +74,15 @@ class PlatformApiIsolationTest {
     }
 
     @Test
+    void agencyNameFollowsTheSameScopeRule() {
+        assertThat(TenantContext.callAsAgency(agencyA, () -> platform.agencyName(agencyA)))
+                .contains("Agence api-a-" + suffix);
+        assertThat(TenantContext.callAsAgency(agencyA, () -> platform.agencyName(agencyB))).isEmpty();
+        assertThat(TenantContext.callAsPlatform(() -> platform.agencyName(agencyB))).contains("Agence api-b-" + suffix);
+        assertThat(platform.agencyName(agencyA)).isEmpty();
+    }
+
+    @Test
     void unknownAgencyHasNoModules() {
         AgencyId unknown = new AgencyId(UUID.randomUUID());
 

@@ -52,6 +52,20 @@
       "name": "Flotte et chauffeurs"
     }
   },
+  "role": {
+    "MANAGER": {
+      "name": "Gérant"
+    },
+    "SALES": {
+      "name": "Commercial"
+    },
+    "OPERATIONS": {
+      "name": "Opérations"
+    },
+    "ACCOUNTANT": {
+      "name": "Comptable"
+    }
+  },
   "modules": {
     "noAgency": "Aucune agence connectée : la connexion arrive à l'étape 3.",
     "loadError": "Impossible de charger vos modules.",

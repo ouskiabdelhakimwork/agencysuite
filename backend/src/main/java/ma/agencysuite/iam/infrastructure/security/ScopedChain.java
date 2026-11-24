@@ -5,11 +5,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.io.IOException;
+import ma.agencysuite.shared.security.CurrentUser;
+import ma.agencysuite.shared.security.UserContext;
 import ma.agencysuite.shared.tenant.AgencyId;
 import ma.agencysuite.shared.tenant.TenantContext;
 
 /**
- * Execute la suite d'un filtre dans un perimetre {@link TenantContext}. TenantContext n'accepte
+ * Execute la suite d'un filtre dans un perimetre {@link TenantContext} (et, pour une agence,
+ * avec l'utilisateur courant {@link UserContext}). Ces contextes n'acceptent
  * que des blocs sans exception controlee : IOException et ServletException sont transportees
  * puis relancees telles quelles.
  */
@@ -24,10 +27,19 @@ final class ScopedChain {
     private ScopedChain() {
     }
 
-    static void runAsPlatform(FilterChain chain, ServletRequest request, ServletResponse response)
+    static void runAsPlatform(FilterWork work) throws IOException, ServletException {
+        try {
+            TenantContext.runAsPlatform(() -> unchecked(work));
+        } catch (CheckedFilterException e) {
+            e.rethrow();
+        }
+    }
+
+    /** Execute la suite de la chaine avec cet utilisateur courant ({@link UserContext}). */
+    static void runAsUser(CurrentUser user, FilterChain chain, ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         try {
-            TenantContext.runAsPlatform(() -> unchecked(() -> chain.doFilter(request, response)));
+            UserContext.runAs(user, () -> unchecked(() -> chain.doFilter(request, response)));
         } catch (CheckedFilterException e) {
             e.rethrow();
         }

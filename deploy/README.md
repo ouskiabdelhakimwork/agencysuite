@@ -50,8 +50,8 @@ Le backend n'accepte que des jetons signés par Keycloak :
 
 | Chemin | Realm attendu | Périmètre ouvert |
 |---|---|---|
-| `/api/v1/backoffice/**` | `platform` | plateforme (toutes les agences) |
-| reste de `/api/**` (sauf `GET /api/v1/platform/info`) | `agencysuite` | agence de l'utilisateur |
+| `/api/v1/backoffice/**` | `platform` | plateforme (toutes les agences), si `platform_user` ACTIVE |
+| reste de `/api/**` (sauf `GET /api/v1/platform/info`) | `agencysuite` | agence de l'utilisateur, si `user_account` ACTIVE |
 
 L'agence vient du claim `organization` du jeton : c'est la liste des **alias** des Organizations Keycloak dont l'utilisateur est membre, par exemple `"organization": ["<uuid-agence>"]`. L'alias d'une Organization est l'UUID de l'agence. Il est fixé à la création et ne peut plus être modifié.
 
@@ -83,6 +83,34 @@ La suppression d'un realm efface ses utilisateurs et ses Organizations : il faut
 4. Retour à l'Organization > *Members* > *Add member* > choisir l'utilisateur.
 
 Un utilisateur ne doit appartenir qu'à **une** Organization : avec zéro ou plusieurs Organizations, le backend refuse l'accès (403).
+
+### Déclarer l'utilisateur dans la base (provisoire, étape 3 lot 2)
+
+Un jeton valide ne suffit pas : l'utilisateur doit **exister et être actif** dans la base de l'application (table `user_account` pour une agence, `platform_user` pour l'éditeur), sinon le backend répond 403 `access-denied`. Les droits viennent de ses rôles (`MANAGER`, `SALES`, `OPERATIONS`, `ACCOUNTANT`).
+
+> **Procédure provisoire.** Le lot 5 créera les comptes par invitation ; en attendant, les lignes sont insérées à la main, avec le compte propriétaire des tables (`POSTGRES_USER`), qui n'est pas soumis à la Row Level Security. Aucun identifiant réel dans ce fichier : remplacer les valeurs entre chevrons.
+
+1. Obtenir le `sub` de l'utilisateur : console Keycloak > realm concerné > *Users* > l'utilisateur > champ **ID** (UUID).
+2. Utilisateur d'agence (realm `agencysuite`), actif et gérant :
+   ```powershell
+   docker compose exec postgres psql -U agencysuite -d agencysuite -c "
+     WITH u AS (
+       INSERT INTO user_account (id, agency_id, external_idp_id, email, full_name, status, created_at, updated_at, version)
+       VALUES (uuidv7(), '<uuid-agence>', '<sub-keycloak>', '<e-mail fictif>@example.test', '<nom fictif>', 'ACTIVE', now(), now(), 0)
+       RETURNING id, agency_id)
+     INSERT INTO user_role (id, agency_id, user_id, role_code, created_at, updated_at, version)
+     SELECT uuidv7(), agency_id, id, 'MANAGER', now(), now(), 0 FROM u;"
+   ```
+   L'agence doit être celle de l'Organization de l'utilisateur (même UUID que l'alias).
+3. Premier membre de l'éditeur (realm `platform`), administrateur :
+   ```powershell
+   docker compose exec postgres psql -U agencysuite -d agencysuite -c "
+     INSERT INTO platform_user (id, external_idp_id, email, full_name, role, status, created_at, updated_at, version)
+     VALUES (uuidv7(), '<sub-keycloak-platform>', '<e-mail fictif>@example.test', '<nom fictif>', 'ADMIN', 'ACTIVE', now(), now(), 0);"
+   ```
+4. Vérifier : `GET /api/v1/me` (jeton `agencysuite`) ou `GET /api/v1/backoffice/me` (jeton `platform`) répond 200.
+
+Désactiver un utilisateur : `UPDATE user_account SET status = 'DISABLED' WHERE external_idp_id = '<sub>';` (effet immédiat, à la requête suivante).
 
 ### Obtenir un jeton et appeler l'API (PowerShell)
 

@@ -172,6 +172,34 @@ class TenantIsolationTest {
         assertThat(unprotected).as("tables portant agency_id sans Row Level Security").isEmpty();
     }
 
+    /** Tables du module iam (etape 3, lot 2) : politique attendue sur chacune. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void iamTablesHaveTheirPolicy() {
+        List<Object[]> policies = asPlatform(() -> entityManager.createNativeQuery("""
+                SELECT tablename, policyname FROM pg_policies
+                WHERE schemaname = 'public' AND tablename IN ('user_account', 'user_role', 'platform_user')
+                ORDER BY tablename
+                """).getResultList());
+
+        assertThat(policies)
+                .extracting(row -> row[0] + ":" + row[1])
+                .containsExactly("platform_user:platform_only", "user_account:tenant_isolation",
+                        "user_role:tenant_isolation");
+    }
+
+    /** L'equipe de l'editeur n'est jamais visible depuis une agence, meme en SQL direct. */
+    @Test
+    void platformUsersAreInvisibleFromAnAgency() {
+        Number seenByAgency = asAgency(agencyA,
+                () -> (Number) entityManager.createNativeQuery("SELECT count(*) FROM platform_user").getSingleResult());
+        Number seenByPlatform = asPlatform(
+                () -> (Number) entityManager.createNativeQuery("SELECT count(*) FROM platform_user").getSingleResult());
+
+        assertThat(seenByAgency.longValue()).isZero();
+        assertThat(seenByPlatform.longValue()).isPositive();
+    }
+
     private <T> T asAgency(AgencyId agency, Supplier<T> work) {
         return TenantContext.callAsAgency(agency, () -> transaction.execute(status -> work.get()));
     }

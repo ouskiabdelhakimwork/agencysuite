@@ -1,5 +1,6 @@
 package ma.agencysuite.iam.infrastructure.security;
 
+import ma.agencysuite.iam.application.CurrentUserResolver;
 import ma.agencysuite.platform.PlatformApi;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.MessageSource;
@@ -26,9 +27,11 @@ import tools.jackson.databind.json.JsonMapper;
  * Trois chaines de securite, evaluees dans l'ordre :
  *
  * <ol>
- *   <li>{@code /api/v1/backoffice/**} : jeton du realm "platform" uniquement &rarr; perimetre plateforme ;</li>
+ *   <li>{@code /api/v1/backoffice/**} : jeton du realm "platform" uniquement, d'un membre ACTIVE de
+ *       l'editeur &rarr; perimetre plateforme ;</li>
  *   <li>{@code /api/**} : {@code GET /api/v1/platform/info} public ; tout le reste exige un jeton du
- *       realm "agencysuite" &rarr; perimetre de l'agence de l'utilisateur ;</li>
+ *       realm "agencysuite", d'un utilisateur ACTIVE de son agence &rarr; perimetre de cette agence
+ *       et utilisateur courant ;</li>
  *   <li>tout le reste : sante et informations de l'actuator, documentation OpenAPI et page
  *       d'erreur publiques ; tout autre chemin refuse.</li>
  * </ol>
@@ -53,25 +56,27 @@ class SecurityConfiguration {
 
     @Bean
     @Order(1)
-    SecurityFilterChain backofficeSecurityChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain backofficeSecurityChain(HttpSecurity http, CurrentUserResolver users) throws Exception {
         String issuer = properties.platformIssuer();
         bearerTokenApi(http, KeycloakJwtDecoders.forRealm(issuer, properties.audience()))
                 .securityMatcher("/api/v1/backoffice/**")
                 .authorizeHttpRequests(requests -> requests.anyRequest().access(issuedBy(issuer)))
-                .addFilterAfter(TenantScopeFilter.platform(issuer, problems), AuthorizationFilter.class);
+                .addFilterAfter(TenantScopeFilter.platform(issuer, users, problems), AuthorizationFilter.class);
         return http.build();
     }
 
     @Bean
     @Order(2)
-    SecurityFilterChain agencySecurityChain(HttpSecurity http, PlatformApi platform) throws Exception {
+    SecurityFilterChain agencySecurityChain(HttpSecurity http, PlatformApi platform, CurrentUserResolver users)
+            throws Exception {
         String issuer = properties.agencyIssuer();
         bearerTokenApi(http, KeycloakJwtDecoders.forRealm(issuer, properties.audience()))
                 .securityMatcher("/api/**")
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.GET, "/api/v1/platform/info").permitAll()
                         .anyRequest().access(issuedBy(issuer)))
-                .addFilterAfter(TenantScopeFilter.agency(issuer, platform, problems), AuthorizationFilter.class);
+                .addFilterAfter(TenantScopeFilter.agency(issuer, platform, users, problems),
+                        AuthorizationFilter.class);
         return http.build();
     }
 

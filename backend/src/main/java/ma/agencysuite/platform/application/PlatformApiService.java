@@ -2,6 +2,7 @@ package ma.agencysuite.platform.application;
 
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import ma.agencysuite.platform.PlatformApi;
 import ma.agencysuite.platform.domain.Agency;
@@ -79,6 +80,14 @@ class PlatformApiService implements PlatformApi {
                 .map(Agency::isOperational)
                 .orElse(false));
         return Boolean.TRUE.equals(operational);
+    }
+
+    @Override
+    public Optional<String> agencyName(AgencyId agencyId) {
+        if (!currentScopeMayRead(agencyId)) {
+            return Optional.empty();
+        }
+        return readOnly.execute(status -> agencies.findById(agencyId.value()).map(Agency::getName));
     }
 
     private static boolean currentScopeMayRead(AgencyId agencyId) {

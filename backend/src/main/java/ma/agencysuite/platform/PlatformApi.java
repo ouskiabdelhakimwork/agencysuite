@@ -1,5 +1,6 @@
 package ma.agencysuite.platform;
 
+import java.util.Optional;
 import java.util.Set;
 import ma.agencysuite.shared.module.ModuleCode;
 import ma.agencysuite.shared.tenant.AgencyId;
@@ -25,4 +26,7 @@ public interface PlatformApi {
      * inconnue, suspendue, en cloture ou fermee, ou si le perimetre courant ne permet pas de la lire.
      */
     boolean isOperational(AgencyId agencyId);
+
+    /** Nom de l'agence. Vide si elle est inconnue ou si le perimetre courant ne permet pas de la lire. */
+    Optional<String> agencyName(AgencyId agencyId);
 }

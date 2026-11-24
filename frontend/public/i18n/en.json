@@ -52,6 +52,20 @@
       "name": "Fleet & drivers"
     }
   },
+  "role": {
+    "MANAGER": {
+      "name": "Manager"
+    },
+    "SALES": {
+      "name": "Sales"
+    },
+    "OPERATIONS": {
+      "name": "Operations"
+    },
+    "ACCOUNTANT": {
+      "name": "Accountant"
+    }
+  },
   "modules": {
     "noAgency": "No agency signed in: sign-in arrives in step 3.",
     "loadError": "Unable to load your modules.",
