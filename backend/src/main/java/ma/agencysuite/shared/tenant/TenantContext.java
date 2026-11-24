@@ -15,8 +15,9 @@ import java.util.function.Supplier;
  * comportement par defaut est sur. Les taches en arriere-plan (files de messages,
  * planificateur) doivent ouvrir explicitement un perimetre.
  *
- * <p>Le perimetre est ouvert par le filtre d'authentification a partir du jeton (etape 3) ;
- * en attendant, par les tests et le back-office.
+ * <p>Pour les requetes HTTP, le perimetre est ouvert par le filtre de securite a partir du
+ * jeton Keycloak (module iam) : realm "platform" pour le back-office, realm "agencysuite" pour
+ * l'agence de l'utilisateur.
  */
 public final class TenantContext {
 
@@ -51,5 +52,15 @@ public final class TenantContext {
                 .filter(TenantScope.Agency.class::isInstance)
                 .map(scope -> ((TenantScope.Agency) scope).agencyId())
                 .orElseThrow(() -> new IllegalStateException("Aucune agence courante"));
+    }
+
+    /**
+     * Echoue si l'on n'est pas dans le perimetre plateforme (back-office editeur). Erreur de
+     * programmation (appel depuis le mauvais point d'entree), pas une erreur de l'utilisateur.
+     */
+    public static void requirePlatform() {
+        if (!(current().orElse(null) instanceof TenantScope.Platform)) {
+            throw new IllegalStateException("Perimetre plateforme requis");
+        }
     }
 }

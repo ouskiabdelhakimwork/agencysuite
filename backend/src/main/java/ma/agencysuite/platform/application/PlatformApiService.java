@@ -4,9 +4,11 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 import ma.agencysuite.platform.PlatformApi;
+import ma.agencysuite.platform.domain.Agency;
 import ma.agencysuite.platform.domain.AgencyModule;
 import ma.agencysuite.platform.domain.AgencyModuleId;
 import ma.agencysuite.platform.infrastructure.AgencyModuleRepository;
+import ma.agencysuite.platform.infrastructure.AgencyRepository;
 import ma.agencysuite.shared.module.ModuleCode;
 import ma.agencysuite.shared.tenant.AgencyId;
 import ma.agencysuite.shared.tenant.TenantContext;
@@ -33,10 +35,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 class PlatformApiService implements PlatformApi {
 
+    private final AgencyRepository agencies;
     private final AgencyModuleRepository agencyModules;
     private final TransactionTemplate readOnly;
 
-    PlatformApiService(AgencyModuleRepository agencyModules, PlatformTransactionManager transactionManager) {
+    PlatformApiService(AgencyRepository agencies, AgencyModuleRepository agencyModules,
+            PlatformTransactionManager transactionManager) {
+        this.agencies = agencies;
         this.agencyModules = agencyModules;
         this.readOnly = new TransactionTemplate(transactionManager);
         this.readOnly.setReadOnly(true);
@@ -63,6 +68,17 @@ class PlatformApiService implements PlatformApi {
         readOnly.executeWithoutResult(status -> agencyModules.findByIdAgencyIdAndEnabledTrue(agencyId.value())
                 .forEach(m -> modules.add(m.getModule())));
         return Collections.unmodifiableSet(modules);
+    }
+
+    @Override
+    public boolean isOperational(AgencyId agencyId) {
+        if (!currentScopeMayRead(agencyId)) {
+            return false;
+        }
+        Boolean operational = readOnly.execute(status -> agencies.findById(agencyId.value())
+                .map(Agency::isOperational)
+                .orElse(false));
+        return Boolean.TRUE.equals(operational);
     }
 
     private static boolean currentScopeMayRead(AgencyId agencyId) {

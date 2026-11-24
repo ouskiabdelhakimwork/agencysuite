@@ -17,6 +17,7 @@ import ma.agencysuite.platform.infrastructure.ModuleDefinitionRepository;
 import ma.agencysuite.platform.infrastructure.PlanRepository;
 import ma.agencysuite.platform.infrastructure.SubscriptionRepository;
 import ma.agencysuite.shared.module.ModuleCode;
+import ma.agencysuite.shared.tenant.TenantContext;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class AgencyAdministrationTest {
     void concurrentCreationOfTheSameSubdomainBecomesSubdomainTaken() {
         when(agencies.saveAndFlush(any(Agency.class))).thenThrow(violationOf("uk_agency_subdomain"));
 
-        assertThatThrownBy(() -> administration.createAgency(command()))
+        assertThatThrownBy(() -> TenantContext.callAsPlatform(() -> administration.createAgency(command())))
                 .isInstanceOf(SubdomainAlreadyTakenException.class);
         verifyNoInteractions(subscriptions, agencyModules, events);
     }
@@ -63,7 +64,7 @@ class AgencyAdministrationTest {
         DataIntegrityViolationException other = violationOf("ck_some_other_rule");
         when(agencies.saveAndFlush(any(Agency.class))).thenThrow(other);
 
-        assertThatThrownBy(() -> administration.createAgency(command())).isSameAs(other);
+        assertThatThrownBy(() -> TenantContext.callAsPlatform(() -> administration.createAgency(command()))).isSameAs(other);
     }
 
     private static DataIntegrityViolationException violationOf(String constraint) {

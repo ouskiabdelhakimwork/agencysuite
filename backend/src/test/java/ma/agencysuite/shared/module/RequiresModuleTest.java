@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.UUID;
 import ma.agencysuite.TestcontainersConfiguration;
 import ma.agencysuite.platform.PlatformTestData;
-import ma.agencysuite.shared.tenant.TestAgencyScopeFilter;
+import ma.agencysuite.TestTokens;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 /**
  * Garde @RequiresModule : un endpoint de module non souscrit renvoie 403, meme en appel direct.
  * Controleur de test {@link TravelProbeController} (module TRAVEL) ; perimetre agence ouvert
- * par le filtre de test (en-tete X-Test-Agency).
+ * par la chaine de securite a partir d'un jeton simule (TestTokens).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -105,12 +105,12 @@ class RequiresModuleTest {
 
     @Test
     void forbidsACallWithoutAnAgencyScope() throws Exception {
-        mvc.perform(get(PROBES))
+        mvc.perform(get(PROBES).with(TestTokens.agencyWithoutOrganization()))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
     private static MockHttpServletRequestBuilder asAgency(MockHttpServletRequestBuilder request, UUID agencyId) {
-        return request.header(TestAgencyScopeFilter.HEADER, agencyId.toString());
+        return request.with(TestTokens.agency(agencyId));
     }
 }

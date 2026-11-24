@@ -3,7 +3,6 @@ package ma.agencysuite.platform.api;
 import java.net.URI;
 import java.util.Locale;
 import ma.agencysuite.platform.application.AgencyScopeRequiredException;
-import ma.agencysuite.platform.application.BackofficeDisabledException;
 import ma.agencysuite.platform.application.InvalidSubdomainException;
 import ma.agencysuite.platform.application.ModuleNotEnabledException;
 import ma.agencysuite.platform.application.ResourceNotFoundException;
@@ -57,11 +56,6 @@ class PlatformProblemHandler {
     @ExceptionHandler(AgencyScopeRequiredException.class)
     ResponseEntity<ProblemDetail> agencyScopeRequired(AgencyScopeRequiredException e, Locale locale) {
         return problem(HttpStatus.FORBIDDEN, "agency-scope-required", locale);
-    }
-
-    @ExceptionHandler(BackofficeDisabledException.class)
-    ResponseEntity<ProblemDetail> backofficeDisabled(BackofficeDisabledException e, Locale locale) {
-        return problem(HttpStatus.FORBIDDEN, "backoffice-disabled", locale);
     }
 
     @ExceptionHandler(InvalidSubdomainException.class)

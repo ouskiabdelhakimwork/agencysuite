@@ -19,6 +19,7 @@ import ma.agencysuite.platform.infrastructure.PlanRepository;
 import ma.agencysuite.platform.infrastructure.SubscriptionRepository;
 import ma.agencysuite.shared.module.ModuleCode;
 import ma.agencysuite.shared.tenant.AgencyId;
+import ma.agencysuite.shared.tenant.TenantContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Administration des agences clientes par l'editeur (US-101).
- * S'execute dans le perimetre plateforme (ouvert par le filtre du back-office).
+ * S'execute uniquement dans le perimetre plateforme (ouvert par la chaine de securite du
+ * back-office, jeton du realm "platform") : ailleurs, {@link IllegalStateException} (500).
  */
 @Service
 public class AgencyAdministration {
@@ -61,6 +63,7 @@ public class AgencyAdministration {
      */
     @Transactional
     public AgencyDetails createAgency(CreateAgencyCommand command) {
+        TenantContext.requirePlatform();
         Agency.checkSubdomain(command.subdomain()).ifPresent(violation -> {
             throw new InvalidSubdomainException(violation);
         });
@@ -105,6 +108,7 @@ public class AgencyAdministration {
     /** Agence, abonnement actif et modules actives. */
     @Transactional(readOnly = true)
     public AgencyDetails getAgency(UUID agencyId) {
+        TenantContext.requirePlatform();
         Agency agency = agencies.findById(agencyId).orElseThrow(() -> new AgencyNotFoundException(agencyId));
         Set<ModuleCode> modules = EnumSet.noneOf(ModuleCode.class);
         agencyModules.findByIdAgencyIdAndEnabledTrue(agencyId).forEach(m -> modules.add(m.getModule()));

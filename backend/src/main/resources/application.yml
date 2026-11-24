@@ -52,3 +52,11 @@ management:
 
 springdoc:
   paths-to-match: /api/**
+
+agencysuite:
+  security:
+    # Emetteurs des jetons Keycloak (adresses publiques, pas des secrets). Les cles publiques
+    # sont lues sur <issuer>/protocol/openid-connect/certs a la premiere requete authentifiee.
+    agency-issuer: ${KEYCLOAK_AGENCY_ISSUER:http://localhost:8180/realms/agencysuite}
+    platform-issuer: ${KEYCLOAK_PLATFORM_ISSUER:http://localhost:8180/realms/platform}
+    audience: agencysuite-api

@@ -1,37 +1,50 @@
-package ma.agencysuite.platform.infrastructure.web;
+package ma.agencysuite.iam.infrastructure.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.io.IOException;
+import ma.agencysuite.shared.tenant.AgencyId;
 import ma.agencysuite.shared.tenant.TenantContext;
 
 /**
- * Poursuit la chaine de filtres dans un perimetre {@link TenantContext}. TenantContext n'accepte
+ * Execute la suite d'un filtre dans un perimetre {@link TenantContext}. TenantContext n'accepte
  * que des blocs sans exception controlee : IOException et ServletException sont transportees
  * puis relancees telles quelles.
  */
-final class ScopedFilterChain {
+final class ScopedChain {
 
-    private ScopedFilterChain() {
+    /** Bloc execute dans le perimetre, pouvant lever les exceptions d'un filtre. */
+    @FunctionalInterface
+    interface FilterWork {
+        void run() throws IOException, ServletException;
+    }
+
+    private ScopedChain() {
     }
 
     static void runAsPlatform(FilterChain chain, ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         try {
-            TenantContext.runAsPlatform(() -> doFilter(chain, request, response));
+            TenantContext.runAsPlatform(() -> unchecked(() -> chain.doFilter(request, response)));
         } catch (CheckedFilterException e) {
             e.rethrow();
         }
     }
 
-    private static void doFilter(FilterChain chain, ServletRequest request, ServletResponse response) {
+    static void runAsAgency(AgencyId agencyId, FilterWork work) throws IOException, ServletException {
         try {
-            chain.doFilter(request, response);
-        } catch (IOException e) {
-            throw new CheckedFilterException(e);
-        } catch (ServletException e) {
+            TenantContext.runAsAgency(agencyId, () -> unchecked(work));
+        } catch (CheckedFilterException e) {
+            e.rethrow();
+        }
+    }
+
+    private static void unchecked(FilterWork work) {
+        try {
+            work.run();
+        } catch (IOException | ServletException e) {
             throw new CheckedFilterException(e);
         }
     }

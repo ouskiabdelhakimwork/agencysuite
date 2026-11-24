@@ -12,6 +12,7 @@ import ma.agencysuite.platform.infrastructure.AgencyRepository;
 import ma.agencysuite.platform.infrastructure.ModuleDefinitionRepository;
 import ma.agencysuite.shared.module.ModuleCode;
 import ma.agencysuite.shared.tenant.AgencyId;
+import ma.agencysuite.shared.tenant.TenantContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link ModuleEnabled} / {@link ModuleDisabled} est publie seulement quand l'etat change
  * (trace consommee par le journal d'audit a l'etape 3).
  *
- * <p>S'execute dans le perimetre plateforme (back-office).
+ * <p>S'execute uniquement dans le perimetre plateforme (back-office, jeton du realm "platform") :
+ * ailleurs, {@link IllegalStateException} (500), avant toute lecture ou ecriture.
  */
 @Service
 public class ModuleActivation {
@@ -73,6 +75,7 @@ public class ModuleActivation {
     }
 
     private void requireAgencyAndModule(UUID agencyId, ModuleCode module) {
+        TenantContext.requirePlatform();
         if (!agencies.existsById(agencyId)) {
             throw new AgencyNotFoundException(agencyId);
         }

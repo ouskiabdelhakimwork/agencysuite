@@ -66,6 +66,19 @@ public class PlatformTestData {
         TenantContext.runAsPlatform(() -> moduleActivation.disable(agencyId, module));
     }
 
+    /** Passe l'agence au statut SUSPENDED. */
+    public void suspend(UUID agencyId) {
+        TenantContext.runAsPlatform(() -> transaction.executeWithoutResult(
+                status -> agencies.findById(agencyId).orElseThrow().suspend()));
+    }
+
+    /** Vrai si une agence porte ce sous-domaine (lecture en perimetre plateforme). */
+    public boolean agencyExists(String subdomain) {
+        Boolean exists = TenantContext.callAsPlatform(() -> transaction.execute(
+                status -> agencies.existsBySubdomain(subdomain)));
+        return Boolean.TRUE.equals(exists);
+    }
+
     /** Ligne agency_module (vide si le module n'a jamais ete souscrit). */
     public Optional<AgencyModule> agencyModule(UUID agencyId, ModuleCode module) {
         return TenantContext.callAsPlatform(() -> transaction.execute(

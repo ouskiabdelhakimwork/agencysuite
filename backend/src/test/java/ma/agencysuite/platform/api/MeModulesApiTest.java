@@ -1,5 +1,7 @@
 package ma.agencysuite.platform.api;
 
+import static ma.agencysuite.TestTokens.agency;
+import static ma.agencysuite.TestTokens.agencyWithoutOrganization;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -8,7 +10,7 @@ import java.util.UUID;
 import ma.agencysuite.TestcontainersConfiguration;
 import ma.agencysuite.platform.PlatformTestData;
 import ma.agencysuite.shared.module.ModuleCode;
-import ma.agencysuite.shared.tenant.TestAgencyScopeFilter;
+
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * GET /api/v1/me/modules : modules actifs de l'agence courante uniquement (isolation entre agences).
- * Le perimetre agence est ouvert par le filtre de test (en-tete X-Test-Agency).
+ * Le perimetre agence est ouvert par la chaine de securite a partir d'un jeton simule (TestTokens).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -53,28 +55,29 @@ class MeModulesApiTest {
 
     @Test
     void returnsOnlyTheActiveModulesOfTheCurrentAgency() throws Exception {
-        mvc.perform(get(ME_MODULES).header(TestAgencyScopeFilter.HEADER, agencyA.toString()))
+        mvc.perform(get(ME_MODULES).with(agency(agencyA)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modules", Matchers.contains("TRAVEL", "GIFTBOX")));
     }
 
     @Test
     void neverReturnsTheModulesOfAnotherAgency() throws Exception {
-        mvc.perform(get(ME_MODULES).header(TestAgencyScopeFilter.HEADER, agencyB.toString()))
+        mvc.perform(get(ME_MODULES).with(agency(agencyB)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modules", Matchers.contains("MICE")));
     }
 
     @Test
-    void unknownAgencyHasNoModules() throws Exception {
-        mvc.perform(get(ME_MODULES).header(TestAgencyScopeFilter.HEADER, UUID.randomUUID().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.modules").isEmpty());
+    void unknownAgencyIsRefusedBeforeReachingTheModules() throws Exception {
+        // Etape 3 : une agence inconnue n'ouvre plus de perimetre (agency-unavailable, voir TenantScopeFilterTest).
+        mvc.perform(get(ME_MODULES).with(agency(UUID.randomUUID())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:agency-unavailable"));
     }
 
     @Test
     void isForbiddenWithoutAnAgencyScope() throws Exception {
-        mvc.perform(get(ME_MODULES))
+        mvc.perform(get(ME_MODULES).with(agencyWithoutOrganization()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:agency-scope-required"));
     }

@@ -5,7 +5,9 @@ spring:
     locations: classpath:db/migration,classpath:db/test-migration
 
 agencysuite:
-  backoffice:
-    # Back-office ouvert sans authentification : tests uniquement (jamais dans application.yml principal).
-    # TODO(etape-3) : remplacer par un jeton du realm "platform" dans les tests.
-    unsecured-access: true
+  security:
+    # Emetteurs figes pour les tests (independants d'un eventuel deploy/.env local), repris par
+    # TestTokens. Aucun Keycloak n'est contacte : les tests utilisent des jetons simules.
+    agency-issuer: https://keycloak.test/realms/agencysuite
+    platform-issuer: https://keycloak.test/realms/platform
+    audience: agencysuite-api

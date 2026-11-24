@@ -19,4 +19,10 @@ public interface PlatformApi {
 
     /** Modules actuellement actives pour l'agence (vide si aucun ou si l'agence est inconnue). */
     Set<ModuleCode> enabledModules(AgencyId agencyId);
+
+    /**
+     * Vrai si l'agence existe et peut etre utilisee (statut TRIAL ou ACTIVE). Faux si elle est
+     * inconnue, suspendue, en cloture ou fermee, ou si le perimetre courant ne permet pas de la lire.
+     */
+    boolean isOperational(AgencyId agencyId);
 }

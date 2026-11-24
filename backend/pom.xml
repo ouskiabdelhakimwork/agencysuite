@@ -50,6 +50,13 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Securite : validation des jetons JWT Keycloak (ADR-08). Spring Boot 4 : starters
+             renommes spring-boot-starter-security-oauth2-* -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+
         <!-- Base de donnees : JPA, PostgreSQL, migrations Flyway (ADR-04, ADR-17) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -91,6 +98,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Jetons simules (SecurityMockMvcRequestPostProcessors.jwt()) -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

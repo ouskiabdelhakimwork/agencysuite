@@ -1,5 +1,6 @@
 package ma.agencysuite.platform.api;
 
+import static ma.agencysuite.TestTokens.platform;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -67,7 +68,7 @@ class BackofficeAgencyApiTest {
                 .andReturn();
 
         String location = created.getResponse().getHeader(HttpHeaders.LOCATION);
-        mvc.perform(get(location))
+        mvc.perform(get(location).with(platform()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.subdomain").value("atlas-" + suffix))
                 .andExpect(jsonPath("$.planCode").value("PRO"))
@@ -193,7 +194,7 @@ class BackofficeAgencyApiTest {
 
     @Test
     void returns404ForAnUnknownAgency() throws Exception {
-        mvc.perform(get(AGENCIES + "/" + UUID.randomUUID()))
+        mvc.perform(get(AGENCIES + "/" + UUID.randomUUID()).with(platform()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:not-found"));
     }
@@ -221,7 +222,7 @@ class BackofficeAgencyApiTest {
     }
 
     private static MockHttpServletRequestBuilder create(String json) {
-        return post(AGENCIES).contentType(MediaType.APPLICATION_JSON).content(json);
+        return post(AGENCIES).with(platform()).contentType(MediaType.APPLICATION_JSON).content(json);
     }
 
     private static String fullRequest(String subdomain, String planCode) {

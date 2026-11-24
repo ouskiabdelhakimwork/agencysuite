@@ -1,5 +1,6 @@
 package ma.agencysuite.platform.api;
 
+import static ma.agencysuite.TestTokens.platform;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,8 +27,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-/** Back-office : activation et desactivation d'un module pour une agence (US-102). */
+/** Back-office : activation et desactivation d'un module pour une agence (US-102), jeton du realm "platform". */
 @SpringBootTest
 @AutoConfigureMockMvc
 @RecordApplicationEvents
@@ -56,13 +59,13 @@ class ModuleActivationApiTest {
 
     @Test
     void enablesThenDisablesAModuleAndTheAgencyReflectsIt() throws Exception {
-        mvc.perform(put(module(agencyId, "TRAVEL"))).andExpect(status().isNoContent());
-        mvc.perform(get(agency(agencyId)))
+        asPlatform(put(module(agencyId, "TRAVEL"))).andExpect(status().isNoContent());
+        asPlatform(get(agency(agencyId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabledModules", Matchers.contains("TRAVEL")));
 
-        mvc.perform(delete(module(agencyId, "TRAVEL"))).andExpect(status().isNoContent());
-        mvc.perform(get(agency(agencyId)))
+        asPlatform(delete(module(agencyId, "TRAVEL"))).andExpect(status().isNoContent());
+        asPlatform(get(agency(agencyId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabledModules").isEmpty());
 
@@ -74,22 +77,22 @@ class ModuleActivationApiTest {
 
     @Test
     void repeatedCallsAreIdempotentAndPublishOneEventPerStateChange() throws Exception {
-        mvc.perform(put(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
-        mvc.perform(put(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
+        asPlatform(put(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
+        asPlatform(put(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
         assertThat(enabledEvents(ModuleCode.GIFTBOX)).isEqualTo(1);
 
-        mvc.perform(delete(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
-        mvc.perform(delete(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
+        asPlatform(delete(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
+        asPlatform(delete(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
         assertThat(disabledEvents(ModuleCode.GIFTBOX)).isEqualTo(1);
 
-        mvc.perform(put(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
+        asPlatform(put(module(agencyId, "GIFTBOX"))).andExpect(status().isNoContent());
         assertThat(enabledEvents(ModuleCode.GIFTBOX)).isEqualTo(2);
-        mvc.perform(get(agency(agencyId))).andExpect(jsonPath("$.enabledModules", Matchers.contains("GIFTBOX")));
+        asPlatform(get(agency(agencyId))).andExpect(jsonPath("$.enabledModules", Matchers.contains("GIFTBOX")));
     }
 
     @Test
     void disablingAModuleNeverSubscribedDoesNothing() throws Exception {
-        mvc.perform(delete(module(agencyId, "MICE"))).andExpect(status().isNoContent());
+        asPlatform(delete(module(agencyId, "MICE"))).andExpect(status().isNoContent());
 
         assertThat(data.agencyModule(agencyId, ModuleCode.MICE)).isEmpty();
         assertThat(events.stream(ModuleDisabled.class)).isEmpty();
@@ -99,10 +102,10 @@ class ModuleActivationApiTest {
     void returns404ForAnUnknownAgency() throws Exception {
         UUID unknown = UUID.randomUUID();
 
-        mvc.perform(put(module(unknown, "TRAVEL")))
+        asPlatform(put(module(unknown, "TRAVEL")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:not-found"));
-        mvc.perform(delete(module(unknown, "TRAVEL")))
+        asPlatform(delete(module(unknown, "TRAVEL")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:not-found"));
         assertThat(events.stream(ModuleEnabled.class)).isEmpty();
@@ -110,11 +113,16 @@ class ModuleActivationApiTest {
 
     @Test
     void returns404ForAnUnknownModule() throws Exception {
-        mvc.perform(put(module(agencyId, "SPACE_TRAVEL")))
+        asPlatform(put(module(agencyId, "SPACE_TRAVEL")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value("urn:agencysuite:problem:not-found"));
-        mvc.perform(delete(module(agencyId, "travel")))
+        asPlatform(delete(module(agencyId, "travel")))
                 .andExpect(status().isNotFound());
+    }
+
+    /** Appel du back-office avec un jeton du realm "platform". */
+    private ResultActions asPlatform(MockHttpServletRequestBuilder request) throws Exception {
+        return mvc.perform(request.with(platform()));
     }
 
     private long enabledEvents(ModuleCode module) {

@@ -25,10 +25,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 /**
  * Back-office editeur : creation des agences clientes (US-101) et activation des modules (US-102).
  *
- * <p>Perimetre plateforme, ouvert par le filtre du back-office. Pas encore d'authentification :
- * desactive par defaut (agencysuite.backoffice.unsecured-access).
+ * <p>Reserve aux jetons du realm Keycloak "platform" ; le perimetre plateforme est ouvert par la
+ * chaine de securite du back-office (module iam).
  */
-// TODO(etape-3) : proteger par le jeton du realm Keycloak "platform".
 @RestController
 @RequestMapping("/api/v1/backoffice/agencies")
 @Tag(name = "backoffice", description = "Back-office editeur : agences clientes et modules souscrits")
