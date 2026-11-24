@@ -7,13 +7,20 @@
 
     @let state = backend();
     @if (state.status === 'ok') {
+      <!-- Valeurs techniques (version, code langue, sens) isolees en gauche-a-droite pour l'arabe. -->
       <dl>
         <dt>{{ 'home.version' | translate }}</dt>
-        <dd>{{ state.info.version }}</dd>
+        <dd>
+          <bdi dir="ltr">{{ state.info.version }}</bdi>
+        </dd>
         <dt>{{ 'home.serverLanguage' | translate }}</dt>
-        <dd>{{ state.info.locale }}</dd>
+        <dd>
+          <bdi dir="ltr">{{ state.info.locale }}</bdi>
+        </dd>
         <dt>{{ 'home.direction' | translate }}</dt>
-        <dd>{{ state.info.direction }}</dd>
+        <dd>
+          <bdi dir="ltr">{{ state.info.direction }}</bdi>
+        </dd>
         <dt>{{ 'home.serverMessage' | translate }}</dt>
         <dd>{{ state.info.welcome }}</dd>
       </dl>
