@@ -1,0 +1,5 @@
+# Complements de configuration pour les tests uniquement (fusionnes avec application.yml).
+spring:
+  flyway:
+    # Migrations de test (tables sondes) en plus des migrations de l'application
+    locations: classpath:db/migration,classpath:db/test-migration
