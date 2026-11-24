@@ -8,6 +8,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import ma.agencysuite.shared.persistence.BaseEntity;
@@ -126,13 +127,30 @@ public class Agency extends BaseEntity {
         return status == AgencyStatus.TRIAL || status == AgencyStatus.ACTIVE;
     }
 
-    static String normalizeSubdomain(String subdomain) {
-        String value = requireText(subdomain, "subdomain").toLowerCase(Locale.ROOT);
+    /**
+     * Regle du sous-domaine, consultable avant la creation : vide si le sous-domaine est
+     * acceptable, sinon la regle non respectee. Les cas d'usage s'en servent pour refuser
+     * proprement la demande ; la construction de l'agence la verifie aussi (invariant).
+     */
+    public static Optional<SubdomainViolation> checkSubdomain(String subdomain) {
+        if (subdomain == null || subdomain.isBlank()) {
+            return Optional.of(SubdomainViolation.INVALID_FORMAT);
+        }
+        String value = subdomain.strip().toLowerCase(Locale.ROOT);
         if (!SUBDOMAIN.matcher(value).matches()) {
-            throw new IllegalArgumentException("Sous-domaine invalide : " + subdomain);
+            return Optional.of(SubdomainViolation.INVALID_FORMAT);
         }
         if (RESERVED_SUBDOMAINS.contains(value)) {
-            throw new IllegalArgumentException("Sous-domaine reserve : " + subdomain);
+            return Optional.of(SubdomainViolation.RESERVED);
+        }
+        return Optional.empty();
+    }
+
+    static String normalizeSubdomain(String subdomain) {
+        String value = requireText(subdomain, "subdomain").toLowerCase(Locale.ROOT);
+        Optional<SubdomainViolation> violation = checkSubdomain(value);
+        if (violation.isPresent()) {
+            throw new IllegalArgumentException("Sous-domaine refuse (" + violation.get() + ")");
         }
         return value;
     }

@@ -31,3 +31,6 @@ coverage/
 # Systeme
 .DS_Store
 Thumbs.db
+
+# Revues de lots (comptes rendus, diffs) : jamais versionnees
+revue/
