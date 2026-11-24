@@ -12,7 +12,9 @@ SaaS multi-agences (multi-tenant) de gestion d'agence de voyage et MICE au Maroc
 - Ton rôle : **implémenter le plan du lot en cours**, lancer les builds et tests, corriger jusqu'au vert, puis rendre compte.
 - **Ne t'écarte pas du plan.** Si une contrainte technique impose un écart (API qui n'existe pas, conflit avec une règle ci-dessous), arrête-toi et explique le problème au lieu d'improviser une autre architecture.
 - Ne commite et ne pousse **jamais** sans l'accord explicite du développeur.
-- À la fin d'un lot, fournis : fichiers créés/modifiés, résultat de `mvnw verify` (nombre de tests), écarts éventuels par rapport au plan, points à faire valider.
+- À la fin d'un lot, écris le compte rendu dans `revue/<lot>-compte-rendu.md` (dossier ignoré par Git) : fichiers créés/modifiés, résultat de `mvnw verify` ou `ng test` (nombre de tests avant/après), écarts par rapport au plan et pourquoi, points à faire valider. Génère aussi le diff : `git add -N <dossier>` puis `git diff -- <dossier> > revue/<lot>.diff` (en UTF-8, depuis Bash). La revue se fait sur ces fichiers, pas sur un copier-coller du terminal.
+- Un bug trouvé hors du périmètre du lot est **signalé** dans le compte rendu, pas corrigé en douce.
+- Le développeur tape `/clear` entre deux lots : ne compte pas sur la conversation précédente, relis ce fichier et le plan.
 
 ## Environnement (poste Windows sans droits administrateur)
 
@@ -47,6 +49,9 @@ Java 25, Spring Boot 4.1 (Maven), Spring Modulith 2.1, Hibernate 7, PostgreSQL 1
   ```
   `TenantIsolationTest` échoue sinon.
 - Périmètre d'exécution via `TenantContext` (ScopedValue) : `runAsAgency` / `callAsAgency`, `runAsPlatform` / `callAsPlatform` (back-office éditeur uniquement). Sans périmètre, rien n'est visible : les tâches asynchrones doivent ouvrir leur périmètre.
+- Un service ou une API interne (`PlatformApi`…) **n'ouvre jamais** de périmètre lui-même : il lit dans le périmètre de l'appelant. Dans un périmètre agence, il refuse toute autre agence (résultat vide ou `false`). Sans périmètre, rien.
+- Le périmètre plateforme n'est ouvert que par l'entrée du back-office (`BackofficeAccessFilter`, désactivé par défaut tant que Keycloak n'est pas branché ; jeton du realm `platform` à partir de l'étape 3).
+- Tables de référence sans `agency_id` (`plan`, `module`) : lecture seule pour le rôle `agencysuite_app`, sans RLS.
 - Pas de `JdbcTemplate` ni de SQL hors Hibernate sur les tables métier.
 - Tests d'isolation pour chaque nouvel endpoint métier : l'agence A ne lit, ne modifie ni ne compte jamais les données de B.
 
@@ -61,7 +66,10 @@ Java 25, Spring Boot 4.1 (Maven), Spring Modulith 2.1, Hibernate 7, PostgreSQL 1
 ## API
 
 - REST `/api/v1/<ressources-au-pluriel-en-kebab-case>` ; endpoints externes sans compte sous `/public/v1/`.
-- Erreurs au format RFC 9457 (`application/problem+json`), messages traduits (`resources/i18n/messages*.properties`, FR par défaut, AR, EN).
+- Erreurs au format RFC 9457 (`application/problem+json`), messages traduits (`resources/i18n/messages*.properties`, FR par défaut, AR, EN) :
+  - `type` = `urn:agencysuite:problem:<code>`, titre et détail sous les clés `problem.<code>.title` et `problem.<code>.detail`, dans les 3 langues ;
+  - seules les **exceptions métier dédiées** sont traduites en 4xx ; **jamais** de gestionnaire global sur `IllegalArgumentException`, `RuntimeException` ou `DataIntegrityViolationException` (une violation de contrainte n'est reconnue que par son nom) ;
+  - toute erreur imprévue reste une 500, sans message interne, trace ni SQL dans la réponse.
 - Documentation OpenAPI (annotations springdoc) sur chaque endpoint.
 - Endpoints d'un module activable : `@RequiresModule(ModuleCode.X)` (403 si le module n'est pas souscrit).
 
@@ -70,6 +78,10 @@ Java 25, Spring Boot 4.1 (Maven), Spring Modulith 2.1, Hibernate 7, PostgreSQL 1
 - Aucun texte en dur : clés de traduction `<module>.<écran>.<élément>` dans `public/i18n/{fr,ar,en}.json`.
 - CSS en propriétés logiques uniquement (`margin-inline-start`, `padding-block`…) pour le RTL.
 - Contenu arabe : montants, codes, numéros, dates et e-mails isolés en gauche-à-droite (`<bdi>` ou `direction: ltr; unicode-bidi: isolate`).
+- Le test de parité `i18n-keys.spec.ts` doit rester vert : toute clé ajoutée en français l'est aussi en arabe et en anglais.
+- `acceptLanguageInterceptor` lit la langue sur `<html lang>` et ne s'applique qu'aux URL `/api/` ; il ne doit dépendre d'aucun service qui injecte `TranslateService` (dépendance circulaire NG0200).
+- Les gardes Angular (`requiresModule`) et le masquage des menus sont du **confort d'affichage**, fermés par défaut ; la protection réelle est côté serveur. `MODULE_CODES` reste aligné sur l'enum backend `ModuleCode`.
+- Une valeur venue de l'URL ou du serveur n'est jamais injectée en HTML (`innerHTML` interdit).
 
 ## Sécurité
 
