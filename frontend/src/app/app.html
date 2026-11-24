@@ -6,6 +6,38 @@
   <app-language-switcher />
 </header>
 
+<nav class="shell-nav" [attr.aria-label]="'nav.label' | translate">
+  <ul class="nav-list">
+    @for (item of menu(); track item.code) {
+      <li>
+        <a
+          class="nav-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [attr.data-module]="item.code"
+          ><bdi>{{ 'module.' + item.code + '.name' | translate }}</bdi></a
+        >
+      </li>
+    }
+  </ul>
+</nav>
+
+@switch (access.state()) {
+  @case ('no-agency') {
+    <!-- TODO(etape-3): remplacer ce texte (modules.noAgency) par la redirection vers la connexion. -->
+    <p class="banner banner-info" role="status">{{ 'modules.noAgency' | translate }}</p>
+  }
+  @case ('error') {
+    <div class="banner banner-error" role="alert">
+      <span>{{ 'modules.loadError' | translate }}</span>
+      <button type="button" class="retry" (click)="retry()">
+        {{ 'modules.retry' | translate }}
+      </button>
+    </div>
+  }
+}
+
 <main class="shell-main">
   <router-outlet />
 </main>

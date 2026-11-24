@@ -16,5 +16,52 @@
     "serverLanguage": "Language returned by the server",
     "direction": "Text direction",
     "serverMessage": "Server message"
+  },
+  "nav": {
+    "label": "Modules"
+  },
+  "module": {
+    "TRAVEL": {
+      "name": "Travel"
+    },
+    "TICKETING": {
+      "name": "Ticketing"
+    },
+    "GIFTBOX": {
+      "name": "Gift concepts"
+    },
+    "TRANSPORT": {
+      "name": "Transport"
+    },
+    "VISA": {
+      "name": "Visas"
+    },
+    "MICE": {
+      "name": "MICE"
+    },
+    "PORTAL": {
+      "name": "Client portal"
+    },
+    "OMRA_HAJJ": {
+      "name": "Umrah & Hajj"
+    },
+    "INBOUND": {
+      "name": "Inbound"
+    },
+    "FLEET": {
+      "name": "Fleet & drivers"
+    }
+  },
+  "modules": {
+    "noAgency": "No agency signed in: sign-in arrives in step 3.",
+    "loadError": "Unable to load your modules.",
+    "retry": "Retry",
+    "placeholder": "This module will be built in a later step."
+  },
+  "moduleNotEnabled": {
+    "title": "Module not enabled",
+    "detail": "The {{module}} module is not enabled for your agency. Contact your administrator or the vendor to subscribe.",
+    "generic": "This module is not enabled for your agency. Contact your administrator or the vendor to subscribe.",
+    "back": "Back to home"
   }
 }

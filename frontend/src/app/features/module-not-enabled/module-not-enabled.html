@@ -1,0 +1,15 @@
+<section class="not-enabled">
+  <h1>{{ 'moduleNotEnabled.title' | translate }}</h1>
+  @if (module(); as code) {
+    <!-- Le nom du module est isole (<bdi>) dans la phrase traduite : un sigle latin comme MICE
+         garde son sens de lecture dans un texte arabe. -->
+    @let parts = ('moduleNotEnabled.detail' | translate: { module: slot }).split(slot);
+    <p class="detail">
+      {{ parts[0] }}<bdi class="module-name">{{ 'module.' + code + '.name' | translate }}</bdi
+      >{{ parts.slice(1).join('') }}
+    </p>
+  } @else {
+    <p class="detail">{{ 'moduleNotEnabled.generic' | translate }}</p>
+  }
+  <a class="back" routerLink="/">{{ 'moduleNotEnabled.back' | translate }}</a>
+</section>

@@ -16,5 +16,52 @@
     "serverLanguage": "Langue renvoyée par le serveur",
     "direction": "Sens d'écriture",
     "serverMessage": "Message du serveur"
+  },
+  "nav": {
+    "label": "Modules"
+  },
+  "module": {
+    "TRAVEL": {
+      "name": "Voyages"
+    },
+    "TICKETING": {
+      "name": "Billetterie"
+    },
+    "GIFTBOX": {
+      "name": "Concepts cadeaux"
+    },
+    "TRANSPORT": {
+      "name": "Transport"
+    },
+    "VISA": {
+      "name": "Visas"
+    },
+    "MICE": {
+      "name": "MICE"
+    },
+    "PORTAL": {
+      "name": "Portail client"
+    },
+    "OMRA_HAJJ": {
+      "name": "Omra et Hajj"
+    },
+    "INBOUND": {
+      "name": "Réceptif"
+    },
+    "FLEET": {
+      "name": "Flotte et chauffeurs"
+    }
+  },
+  "modules": {
+    "noAgency": "Aucune agence connectée : la connexion arrive à l'étape 3.",
+    "loadError": "Impossible de charger vos modules.",
+    "retry": "Réessayer",
+    "placeholder": "Ce module sera construit dans une prochaine étape."
+  },
+  "moduleNotEnabled": {
+    "title": "Module non activé",
+    "detail": "Le module {{module}} n'est pas activé pour votre agence. Contactez votre administrateur ou l'éditeur pour le souscrire.",
+    "generic": "Ce module n'est pas activé pour votre agence. Contactez votre administrateur ou l'éditeur pour le souscrire.",
+    "back": "Retour à l'accueil"
   }
 }

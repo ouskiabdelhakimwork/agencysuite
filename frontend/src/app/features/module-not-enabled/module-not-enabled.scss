@@ -1,0 +1,17 @@
+// Proprietes CSS logiques uniquement (RTL automatique).
+.not-enabled {
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  padding-block: 2rem;
+  padding-inline: 1rem;
+}
+
+.detail {
+  color: var(--color-muted);
+}
+
+.back {
+  display: inline-block;
+  margin-block-start: 1rem;
+  color: var(--color-primary);
+}
