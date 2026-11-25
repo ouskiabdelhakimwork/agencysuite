@@ -13,6 +13,10 @@
   "verifyEmail": true,
   "bruteForceProtected": true,
   "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "rememberMe": false,
   "passwordPolicy": "length(12) and notUsername and notEmail",
   "smtpServer": {
     "host": "mailpit",

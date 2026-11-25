@@ -62,7 +62,7 @@ describe('ModuleAccessService', () => {
     const done = service.load();
     http
       .expectOne(URL)
-      .flush({ type: 'urn:agencysuite:problem:backoffice-disabled', status: 403 }, FORBIDDEN);
+      .flush({ type: 'urn:agencysuite:problem:access-denied', status: 403 }, FORBIDDEN);
     await done;
 
     expect(service.state()).toBe('error');
@@ -157,5 +157,16 @@ describe('ModuleAccessService', () => {
     await done;
 
     expect(localStorage.length).toBe(0);
+  });
+
+  it('clear() forgets the modules (logout)', async () => {
+    const first = service.load();
+    http.expectOne(URL).flush({ modules: ['TRAVEL'] });
+    await first;
+
+    service.clear();
+
+    expect(service.state()).toBe('idle');
+    expect(service.has('TRAVEL')).toBe(false);
   });
 });

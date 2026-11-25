@@ -3,7 +3,24 @@
     <span class="brand-name">{{ 'app.name' | translate }}</span>
     <span class="brand-tagline">{{ 'app.tagline' | translate }}</span>
   </div>
-  <app-language-switcher />
+  <div class="shell-tools">
+    @if (loading()) {
+      <span class="spinner" role="status" [attr.aria-label]="'auth.loading' | translate"></span>
+    }
+    @if (user.profile(); as profile) {
+      <!-- Noms latins dans une interface arabe : isoles pour garder leur sens de lecture. -->
+      <div class="account">
+        <bdi class="user-name">{{ profile.fullName }}</bdi>
+        <bdi class="agency-name">{{ profile.agency.name }}</bdi>
+      </div>
+    }
+    <app-language-switcher />
+    @if (auth.state() === 'authenticated') {
+      <button type="button" class="logout" (click)="logout()">
+        {{ 'auth.logout' | translate }}
+      </button>
+    }
+  </div>
 </header>
 
 <nav class="shell-nav" [attr.aria-label]="'nav.label' | translate">
@@ -23,19 +40,13 @@
   </ul>
 </nav>
 
-@switch (access.state()) {
-  @case ('no-agency') {
-    <!-- TODO(etape-3): remplacer ce texte (modules.noAgency) par la redirection vers la connexion. -->
-    <p class="banner banner-info" role="status">{{ 'modules.noAgency' | translate }}</p>
-  }
-  @case ('error') {
-    <div class="banner banner-error" role="alert">
-      <span>{{ 'modules.loadError' | translate }}</span>
-      <button type="button" class="retry" (click)="retry()">
-        {{ 'modules.retry' | translate }}
-      </button>
-    </div>
-  }
+@if (access.state() === 'error' && !denied()) {
+  <div class="banner banner-error" role="alert">
+    <span>{{ 'modules.loadError' | translate }}</span>
+    <button type="button" class="retry" (click)="retry()">
+      {{ 'modules.retry' | translate }}
+    </button>
+  </div>
 }
 
 <main class="shell-main">

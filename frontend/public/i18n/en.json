@@ -67,7 +67,6 @@
     }
   },
   "modules": {
-    "noAgency": "No agency signed in: sign-in arrives in step 3.",
     "loadError": "Unable to load your modules.",
     "retry": "Retry",
     "placeholder": "This module will be built in a later step."
@@ -77,5 +76,21 @@
     "detail": "The {{module}} module is not enabled for your agency. Contact your administrator or the vendor to subscribe.",
     "generic": "This module is not enabled for your agency. Contact your administrator or the vendor to subscribe.",
     "back": "Back to home"
+  },
+  "auth": {
+    "loading": "Loading…",
+    "logout": "Sign out",
+    "unavailable": {
+      "title": "Sign-in unavailable",
+      "detail": "The sign-in service is temporarily unavailable. Try again in a few moments.",
+      "retry": "Retry"
+    },
+    "denied": {
+      "title": "Access denied",
+      "noAgency": "Your account is not linked to any agency. Contact your agency administrator.",
+      "notActivated": "Your account is not activated. Contact your agency administrator.",
+      "agencyUnavailable": "Your agency is temporarily unavailable. Contact the publisher.",
+      "generic": "You do not have access to the application."
+    }
   }
 }

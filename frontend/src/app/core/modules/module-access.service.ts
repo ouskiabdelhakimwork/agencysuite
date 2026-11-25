@@ -46,9 +46,15 @@ export class ModuleAccessService {
     return this.fetch();
   }
 
-  /** Force un nouvel appel (servira apres la connexion, etape 3). Ne rejette jamais. */
+  /** Force un nouvel appel (apres la connexion). Ne rejette jamais. */
   refresh(): Promise<void> {
     return this.pending ?? this.fetch();
+  }
+
+  /** Oublie les modules (deconnexion). */
+  clear(): void {
+    this.enabledSignal.set(NONE);
+    this.stateSignal.set('idle');
   }
 
   private fetch(): Promise<void> {
