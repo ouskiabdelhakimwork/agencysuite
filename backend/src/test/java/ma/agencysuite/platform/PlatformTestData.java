@@ -1,8 +1,12 @@
 package ma.agencysuite.platform;
 
 import jakarta.persistence.EntityManager;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
+import javax.sql.DataSource;
 import ma.agencysuite.TestTokens;
 import ma.agencysuite.iam.IamTestData;
 import ma.agencysuite.iam.domain.UserStatus;
@@ -39,16 +43,18 @@ public class PlatformTestData {
     private final TransactionTemplate transaction;
     private final EntityManager entityManager;
     private final IamTestData iam;
+    private final DataSource dataSource;
 
     PlatformTestData(AgencyRepository agencies, AgencyModuleRepository agencyModules,
             ModuleActivation moduleActivation, TransactionTemplate transaction, EntityManager entityManager,
-            IamTestData iam) {
+            IamTestData iam, DataSource dataSource) {
         this.agencies = agencies;
         this.agencyModules = agencyModules;
         this.moduleActivation = moduleActivation;
         this.transaction = transaction;
         this.entityManager = entityManager;
         this.iam = iam;
+        this.dataSource = dataSource;
     }
 
     /** Suffixe aleatoire (8 caracteres hexadecimaux) a ajouter aux sous-domaines d'un test. */
@@ -100,11 +106,28 @@ public class PlatformTestData {
 
     /** Supprime les agences dont le sous-domaine se termine par le suffixe, et leurs donnees. */
     public void deleteAgenciesWithSuffix(String suffix) {
+        deleteAuditEntries("%" + suffix);
         TenantContext.runAsPlatform(() -> transaction.executeWithoutResult(status -> {
             String pattern = "%" + suffix;
             for (String statement : CLEANUP) {
                 entityManager.createNativeQuery(statement).setParameter("pattern", pattern).executeUpdate();
             }
         }));
+    }
+
+    /**
+     * Le journal d'audit est en ajout seul : le role applicatif ne peut pas supprimer ses entrees
+     * (migration V5). Le nettoyage des tests passe donc par une connexion directe de la source de
+     * donnees, avec le compte proprietaire des tables (sans SET ROLE, hors RLS). Tests uniquement.
+     */
+    private void deleteAuditEntries(String pattern) {
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement delete = connection.prepareStatement(
+                        "DELETE FROM audit_log WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE ?)")) {
+            delete.setString(1, pattern);
+            delete.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

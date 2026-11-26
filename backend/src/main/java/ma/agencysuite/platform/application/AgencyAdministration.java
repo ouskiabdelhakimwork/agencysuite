@@ -6,6 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import ma.agencysuite.platform.AgencyCreated;
 import ma.agencysuite.platform.ModuleEnabled;
 import ma.agencysuite.platform.domain.Agency;
 import ma.agencysuite.platform.domain.AgencyModule;
@@ -53,7 +54,8 @@ public class AgencyAdministration {
 
     /**
      * Cree l'agence, son identite legale, son abonnement et active les modules demandes,
-     * en une seule transaction. Un evenement {@link ModuleEnabled} est publie par module active.
+     * en une seule transaction. Publie {@link AgencyCreated}, puis un {@link ModuleEnabled} par module
+     * active, dans cette transaction (le journal d'audit y ecrit ses entrees).
      *
      * @throws InvalidSubdomainException sous-domaine invalide ou reserve (regles de {@link Agency})
      * @throws SubdomainAlreadyTakenException sous-domaine deja attribue, y compris par une creation
@@ -98,6 +100,7 @@ public class AgencyAdministration {
 
         Instant now = Instant.now();
         AgencyId agencyId = new AgencyId(agency.getId());
+        events.publishEvent(new AgencyCreated(agencyId, command.planCode(), modules));
         for (ModuleCode module : modules) {
             agencyModules.save(AgencyModule.enable(agency.getId(), module, now));
             events.publishEvent(new ModuleEnabled(agencyId, module, now));

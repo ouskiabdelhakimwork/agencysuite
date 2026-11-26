@@ -172,20 +172,48 @@ class TenantIsolationTest {
         assertThat(unprotected).as("tables portant agency_id sans Row Level Security").isEmpty();
     }
 
-    /** Tables du module iam (etape 3, lot 2) : politique attendue sur chacune. */
+    /** Tables du module iam (etape 3, lots 2 et 4) : politique attendue sur chacune. */
     @Test
     @SuppressWarnings("unchecked")
     void iamTablesHaveTheirPolicy() {
         List<Object[]> policies = asPlatform(() -> entityManager.createNativeQuery("""
                 SELECT tablename, policyname FROM pg_policies
-                WHERE schemaname = 'public' AND tablename IN ('user_account', 'user_role', 'platform_user')
+                WHERE schemaname = 'public'
+                  AND tablename IN ('user_account', 'user_role', 'platform_user', 'audit_log')
                 ORDER BY tablename
                 """).getResultList());
 
         assertThat(policies)
                 .extracting(row -> row[0] + ":" + row[1])
-                .containsExactly("platform_user:platform_only", "user_account:tenant_isolation",
-                        "user_role:tenant_isolation");
+                .containsExactly("audit_log:tenant_isolation", "platform_user:platform_only",
+                        "user_account:tenant_isolation", "user_role:tenant_isolation");
+    }
+
+    /**
+     * Un role ne peut etre rattache qu'a un utilisateur de la meme agence (cle etrangere composee
+     * user_role (user_id, agency_id) vers user_account (id, agency_id), migration V5) : meme en
+     * perimetre plateforme, ou la RLS laisse tout passer, l'insertion incoherente est rejetee.
+     */
+    @Test
+    void aRoleCannotBeAttachedToAUserOfAnotherAgency() {
+        UUID userOfA = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO user_account (id, agency_id, external_idp_id, email, status, created_at, updated_at, version)
+                VALUES (:id, :a, :sub, 'fk-check@example.test', 'ACTIVE', now(), now(), 0)
+                """).setParameter("id", userOfA).setParameter("a", agencyA.value())
+                .setParameter("sub", UUID.randomUUID().toString()).executeUpdate());
+        try {
+            assertThatThrownBy(() -> asPlatform(() -> entityManager.createNativeQuery("""
+                    INSERT INTO user_role (id, agency_id, user_id, role_code, created_at, updated_at, version)
+                    VALUES (:id, :b, :user, 'SALES', now(), now(), 0)
+                    """).setParameter("id", UUID.randomUUID()).setParameter("b", agencyB.value())
+                    .setParameter("user", userOfA).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("fk_user_role_user_same_agency");
+        } finally {
+            asPlatform(() -> entityManager.createNativeQuery("DELETE FROM user_account WHERE id = :id")
+                    .setParameter("id", userOfA).executeUpdate());
+        }
     }
 
     /** L'equipe de l'editeur n'est jamais visible depuis une agence, meme en SQL direct. */

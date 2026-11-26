@@ -6,8 +6,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import ma.agencysuite.iam.application.AgencyUserProfile;
+import ma.agencysuite.iam.application.LoginEvents;
 import ma.agencysuite.iam.application.UserProfiles;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -19,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 class MeController {
 
     private final UserProfiles profiles;
+    private final LoginEvents logins;
 
-    MeController(UserProfiles profiles) {
+    MeController(UserProfiles profiles, LoginEvents logins) {
         this.profiles = profiles;
+        this.logins = logins;
     }
 
     @GetMapping("/api/v1/me")
@@ -34,6 +40,18 @@ class MeController {
         return new MeResponse(profile.id(), profile.email(), profile.fullName(),
                 new MeResponse.Agency(profile.agencyId().value(), profile.agencyName()),
                 profile.roles(), profile.permissions());
+    }
+
+    @PostMapping("/api/v1/me/login-events")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Signale la connexion de l'utilisateur (apres le retour du fournisseur d'identite)",
+            description = "Met a jour la date de derniere connexion et trace USER_LOGGED_IN dans le journal "
+                    + "d'audit. Une seconde connexion a moins de 60 secondes est ignoree (204 sans entree).")
+    @ApiResponse(responseCode = "204", description = "Connexion prise en compte (ou ignoree car trop rapprochee)")
+    @ApiResponse(responseCode = "401", description = "Jeton absent ou invalide")
+    @ApiResponse(responseCode = "403", description = "Utilisateur inconnu ou desactive, ou agence indisponible")
+    void loginEvent() {
+        logins.recordLogin();
     }
 
     /** Reponse de GET /api/v1/me. Roles et permissions tries par code. */

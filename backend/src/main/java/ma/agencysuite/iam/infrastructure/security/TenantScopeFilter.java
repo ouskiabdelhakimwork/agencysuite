@@ -31,13 +31,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <ul>
  *   <li>Chaine du back-office : jeton du realm "platform" &rarr; perimetre plateforme, si le
- *       {@code sub} est celui d'un membre ACTIVE de l'editeur (table platform_user).</li>
+ *       {@code sub} est celui d'un membre ACTIVE de l'editeur (table platform_user), auteur des
+ *       actions ({@code ActorContext}).</li>
  *   <li>Chaine des agences : jeton du realm "agencysuite" &rarr; perimetre de l'agence lue dans le
  *       claim {@code organization}. Ce claim est la liste des alias des Organizations Keycloak de
  *       l'utilisateur ; l'alias est l'UUID de l'agence. Exactement une Organization est attendue.
  *       L'agence doit exister et etre operationnelle (verifie dans son propre perimetre), puis le
  *       {@code sub} doit etre celui d'un utilisateur ACTIVE de cette agence : la suite de la
- *       chaine s'execute alors avec cet utilisateur et ses permissions ({@code UserContext}).</li>
+ *       chaine s'execute alors avec cet utilisateur et ses permissions ({@code UserContext}), auteur des
+ *       actions ({@code ActorContext}).</li>
  * </ul>
  *
  * <p>Un jeton valide ne suffit donc pas (ferme par defaut) : utilisateur inconnu, invite ou
@@ -94,14 +96,15 @@ final class TenantScopeFilter extends OncePerRequestFilter {
         Jwt jwt = token.getToken();
         if (scope == Scope.PLATFORM) {
             ScopedChain.runAsPlatform(() -> {
-                if (!users.isActivePlatformUser(jwt.getSubject())) {
+                Optional<UUID> platformUserId = users.activePlatformUserId(jwt.getSubject());
+                if (platformUserId.isEmpty()) {
                     // Meme reponse pour un membre inconnu ou desactive.
                     LOG.debug("Membre de l'editeur inconnu ou inactif : sub={}", jwt.getSubject());
                     problems.write(request, response, HttpStatus.FORBIDDEN, "access-denied");
                     return;
                 }
                 LOG.debug("Perimetre plateforme pour sub={}", jwt.getSubject());
-                chain.doFilter(request, response);
+                ScopedChain.runAsPlatformUser(platformUserId.get(), chain, request, response);
             });
             return;
         }

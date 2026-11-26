@@ -83,4 +83,22 @@ public class IamTestData {
                 .setParameter("sub", sub)
                 .executeUpdate()));
     }
+
+    /** Identifiant (user_account.id) de l'utilisateur d'agence ayant ce sub. */
+    public UUID userId(UUID agencyId, String sub) {
+        return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx ->
+                users.findAll().stream()
+                        .filter(user -> user.getExternalIdpId().equals(sub))
+                        .findFirst().orElseThrow()
+                        .getId()));
+    }
+
+    /** Date de derniere connexion de l'utilisateur d'agence ayant ce sub. */
+    public java.time.Instant lastLoginAt(UUID agencyId, String sub) {
+        return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx ->
+                users.findAll().stream()
+                        .filter(user -> user.getExternalIdpId().equals(sub))
+                        .findFirst().orElseThrow()
+                        .getLastLoginAt()));
+    }
 }

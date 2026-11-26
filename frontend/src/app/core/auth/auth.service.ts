@@ -1,5 +1,7 @@
 import { DOCUMENT, Injectable, inject, signal } from '@angular/core';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { firstValueFrom } from 'rxjs';
+import { MeApi } from '../api/me-api';
 import { LanguageService } from '../i18n/language.service';
 import { ModuleAccessService } from '../modules/module-access.service';
 import { createAuthConfig } from './auth.config';
@@ -23,6 +25,7 @@ export class AuthService {
   private readonly currentUser = inject(CurrentUserService);
   private readonly modules = inject(ModuleAccessService);
   private readonly document = inject(DOCUMENT);
+  private readonly meApi = inject(MeApi);
 
   private readonly stateSignal = signal<AuthState>('initializing');
   private initialization: Promise<void> | null = null;
@@ -81,8 +84,14 @@ export class AuthService {
       this.stateSignal.set('unavailable');
       return;
     }
+    // Retour du fournisseur d'identite : code d'autorisation dans l'URL, lu avant que tryLogin() le retire.
+    const returningFromLogin = hasAuthorizationCode(
+      this.document.defaultView?.location.search ?? '',
+    );
+    let codeExchanged = false;
     try {
       await this.oauth.tryLogin();
+      codeExchanged = returningFromLogin;
     } catch {
       // Retour de connexion invalide (etat ou code refuse) : traite comme non connecte,
       // la garde relancera la connexion. Rien n'est journalise ici (pas de jeton dans les logs).
@@ -96,9 +105,19 @@ export class AuthService {
     this.stateSignal.set('authenticated');
     void this.currentUser.load();
     void this.modules.refresh();
+    if (codeExchanged) {
+      // Une seule fois par connexion (pas a chaque rechargement) ; un echec n'empeche rien.
+      void firstValueFrom(this.meApi.loginEvent()).catch(() => undefined);
+    }
   }
 
   private startLogin(): void {
     this.oauth.initCodeFlow('', { ui_locales: this.language.current().code });
   }
+}
+
+/** Vrai si l'URL porte un code d'autorisation et son etat (retour du flux code + PKCE). */
+function hasAuthorizationCode(search: string): boolean {
+  const params = new URLSearchParams(search);
+  return params.has('code') && params.has('state');
 }

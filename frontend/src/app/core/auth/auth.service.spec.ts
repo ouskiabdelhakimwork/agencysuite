@@ -51,6 +51,65 @@ describe('AuthService', () => {
   afterEach(() => {
     http.verify();
     localStorage.clear();
+    history.replaceState(null, '', '/');
+  });
+
+  describe('login event', () => {
+    const LOGIN_EVENTS = '/api/v1/me/login-events';
+
+    function answerProfileAndModules(): void {
+      http.expectOne('/api/v1/me').flush(PROFILE);
+      http.expectOne('/api/v1/me/modules').flush({ modules: [] });
+    }
+
+    it('reports a single login right after a successful login callback', async () => {
+      history.replaceState(null, '', '/?state=abc&code=xyz&iss=x');
+      oauth.hasValidAccessToken.mockReturnValue(true);
+      const auth = TestBed.inject(AuthService);
+
+      await auth.init();
+      await auth.init();
+
+      const event = http.expectOne(LOGIN_EVENTS);
+      expect(event.request.method).toBe('POST');
+      event.flush(null, { status: 204, statusText: 'No Content' });
+      answerProfileAndModules();
+    });
+
+    it('reports nothing on a reload with an already stored token', async () => {
+      oauth.hasValidAccessToken.mockReturnValue(true);
+      const auth = TestBed.inject(AuthService);
+
+      await auth.init();
+
+      http.expectNone(LOGIN_EVENTS);
+      answerProfileAndModules();
+    });
+
+    it('reports nothing when the login callback is rejected', async () => {
+      history.replaceState(null, '', '/?state=abc&code=xyz');
+      oauth.tryLogin.mockRejectedValue(new Error('invalid_nonce_in_state'));
+      oauth.hasValidAccessToken.mockReturnValue(true);
+      const auth = TestBed.inject(AuthService);
+
+      await auth.init();
+
+      http.expectNone(LOGIN_EVENTS);
+      answerProfileAndModules();
+    });
+
+    it('ignores a failed login report', async () => {
+      history.replaceState(null, '', '/?state=abc&code=xyz');
+      oauth.hasValidAccessToken.mockReturnValue(true);
+      const auth = TestBed.inject(AuthService);
+
+      await auth.init();
+      http.expectOne(LOGIN_EVENTS).flush('boom', { status: 500, statusText: 'Server Error' });
+      answerProfileAndModules();
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(auth.state()).toBe('authenticated');
+    });
   });
 
   it('is authenticated when discovery succeeds and a valid token exists', async () => {

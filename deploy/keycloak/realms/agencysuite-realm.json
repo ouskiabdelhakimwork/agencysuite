@@ -17,6 +17,12 @@
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "rememberMe": false,
+  "eventsEnabled": true,
+  "eventsListeners": [],
+  "eventsExpiration": 7776000,
+  "enabledEventTypes": ["LOGIN", "LOGIN_ERROR", "LOGOUT"],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
   "passwordPolicy": "length(12) and notUsername and notEmail",
   "smtpServer": {
     "host": "mailpit",

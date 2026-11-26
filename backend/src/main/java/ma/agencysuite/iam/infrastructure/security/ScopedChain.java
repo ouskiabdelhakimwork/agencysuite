@@ -5,6 +5,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.io.IOException;
+import java.util.UUID;
+import ma.agencysuite.shared.security.Actor;
+import ma.agencysuite.shared.security.ActorContext;
 import ma.agencysuite.shared.security.CurrentUser;
 import ma.agencysuite.shared.security.UserContext;
 import ma.agencysuite.shared.tenant.AgencyId;
@@ -12,7 +15,8 @@ import ma.agencysuite.shared.tenant.TenantContext;
 
 /**
  * Execute la suite d'un filtre dans un perimetre {@link TenantContext} (et, pour une agence,
- * avec l'utilisateur courant {@link UserContext}). Ces contextes n'acceptent
+ * avec l'utilisateur courant {@link UserContext}), avec l'auteur des actions ({@link ActorContext},
+ * journal d'audit). Ces contextes n'acceptent
  * que des blocs sans exception controlee : IOException et ServletException sont transportees
  * puis relancees telles quelles.
  */
@@ -35,11 +39,26 @@ final class ScopedChain {
         }
     }
 
-    /** Execute la suite de la chaine avec cet utilisateur courant ({@link UserContext}). */
+    /**
+     * Execute la suite de la chaine avec cet utilisateur d'agence courant ({@link UserContext}), auteur
+     * des actions ({@link ActorContext}).
+     */
     static void runAsUser(CurrentUser user, FilterChain chain, ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         try {
-            UserContext.runAs(user, () -> unchecked(() -> chain.doFilter(request, response)));
+            ActorContext.runAs(Actor.agencyUser(user.userId()), () -> UserContext.runAs(user,
+                    () -> unchecked(() -> chain.doFilter(request, response))));
+        } catch (CheckedFilterException e) {
+            e.rethrow();
+        }
+    }
+
+    /** Execute la suite de la chaine avec ce membre de l'editeur comme auteur des actions. */
+    static void runAsPlatformUser(UUID platformUserId, FilterChain chain, ServletRequest request,
+            ServletResponse response) throws IOException, ServletException {
+        try {
+            ActorContext.runAs(Actor.platformUser(platformUserId),
+                    () -> unchecked(() -> chain.doFilter(request, response)));
         } catch (CheckedFilterException e) {
             e.rethrow();
         }

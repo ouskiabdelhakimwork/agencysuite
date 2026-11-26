@@ -28,6 +28,11 @@ export class MeApi {
     return this.http.get<MeResponse>('/api/v1/me');
   }
 
+  /** Signale une connexion reussie (POST /api/v1/me/login-events, 204) : journal d'audit et derniere connexion. */
+  loginEvent(): Observable<void> {
+    return this.http.post<void>('/api/v1/me/login-events', null);
+  }
+
   myModules(): Observable<MyModulesResponse> {
     return this.http.get<MyModulesResponse>('/api/v1/me/modules');
   }

@@ -125,6 +125,28 @@ Ne jamais coller un jeton dans un fichier versionné, un ticket ou un journal.
 
 Pour le realm `platform`, la double authentification est obligatoire : l'utilisateur doit d'abord configurer son application TOTP en se connectant une fois sur http://localhost:8180/realms/platform/account, puis ajouter `-d totp=<code à 6 chiffres>` à la requête de jeton.
 
+### Journal des connexions (événements Keycloak, étape 3 lot 4)
+
+Les connexions réussies sont tracées par l'application (`USER_LOGGED_IN`, lisible par `GET /api/v1/audit-events` avec la permission `audit.read`). Les **échecs** de connexion (mauvais mot de passe, compte bloqué) ne sont vus que par Keycloak : les événements du realm `agencysuite` sont activés (`LOGIN`, `LOGIN_ERROR`, `LOGOUT`, conservés 90 jours, durée à valider avec le juriste), ainsi que les événements d'administration, sans le détail des représentations (pas de données personnelles stockées dans l'événement).
+
+Où les consulter : console http://localhost:8180/admin > realm `agencysuite` > *Events* (onglet *User events* pour les connexions, *Admin events* pour les modifications faites dans la console). Les événements sont **stockés uniquement en base Keycloak** : l'écouteur `jboss-logging` est retiré des realms `agencysuite` et `platform` (`eventsListeners: []`), car il écrivait chaque échec de connexion dans le journal du conteneur avec l'identifiant saisi et l'adresse IP (données personnelles). `docker compose logs keycloak` ne montre donc plus les connexions : passer par la console ou par `kcadm get events`.
+
+Appliquer ces réglages à un realm existant **sans le réimporter** (la réimportation efface l'Organization et les utilisateurs d'essai), depuis `deploy\`, dans le conteneur Keycloak :
+
+```sh
+K=/opt/keycloak/bin/kcadm.sh
+$K config credentials --server http://localhost:8080 --realm master --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" --config /tmp/kcadm.config
+$K update events/config -r agencysuite --config /tmp/kcadm.config -s eventsEnabled=true \
+    -s 'enabledEventTypes=["LOGIN","LOGIN_ERROR","LOGOUT"]' -s eventsExpiration=7776000 \
+    -s adminEventsEnabled=true -s adminEventsDetailsEnabled=false -s 'eventsListeners=[]'
+$K update events/config -r platform --config /tmp/kcadm.config -s 'eventsListeners=[]'
+# Consulter les derniers echecs de connexion (sans afficher l'identifiant saisi ni l'IP) :
+$K get events -r agencysuite --config /tmp/kcadm.config -q type=LOGIN_ERROR -q max=5 --fields type,clientId,error,time
+rm -f /tmp/kcadm.config
+```
+
+(à lancer par `docker compose exec keycloak sh`.)
+
 ## Points de vigilance
 
 - Le dossier `deploy/postgres/init` n'est lu qu'au **premier** démarrage de PostgreSQL. Pour rejouer l'initialisation : `docker compose down -v`.

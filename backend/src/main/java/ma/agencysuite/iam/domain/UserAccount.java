@@ -53,6 +53,11 @@ public class UserAccount extends AgencyScopedEntity {
         status = UserStatus.DISABLED;
     }
 
+    /** Connexion reussie (signalee par l'interface apres le retour du fournisseur d'identite). */
+    public void recordLogin(Instant at) {
+        lastLoginAt = Objects.requireNonNull(at, "at");
+    }
+
     public String getExternalIdpId() {
         return externalIdpId;
     }

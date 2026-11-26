@@ -4,6 +4,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import ma.agencysuite.iam.domain.PlatformUser;
 import ma.agencysuite.iam.domain.UserStatus;
 import ma.agencysuite.iam.infrastructure.PlatformUserRepository;
@@ -69,12 +70,22 @@ public class CurrentUserResolver {
 
     /** Vrai si un membre ACTIVE de l'editeur a ce sub. Faux hors perimetre plateforme. */
     public boolean isActivePlatformUser(String sub) {
+        return activePlatformUserId(sub).isPresent();
+    }
+
+    /**
+     * Identifiant (ligne platform_user) du membre ACTIVE de l'editeur ayant ce sub, auteur des
+     * actions du back-office dans le journal d'audit. Vide s'il est inconnu ou desactive, ou hors
+     * perimetre plateforme.
+     */
+    public Optional<UUID> activePlatformUserId(String sub) {
         if (sub == null || !(TenantContext.current().orElse(null) instanceof TenantScope.Platform)) {
-            return false;
+            return Optional.empty();
         }
-        Boolean active = readOnly.execute(status -> platformUsers.findByExternalIdpId(sub)
-                .map(PlatformUser::isActive)
-                .orElse(false));
-        return Boolean.TRUE.equals(active);
+        UUID id = readOnly.execute(status -> platformUsers.findByExternalIdpId(sub)
+                .filter(PlatformUser::isActive)
+                .map(PlatformUser::getId)
+                .orElse(null));
+        return Optional.ofNullable(id);
     }
 }
