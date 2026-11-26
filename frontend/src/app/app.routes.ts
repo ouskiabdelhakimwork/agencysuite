@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { requiresPermission } from './core/auth/requires-permission.guard';
 import { MODULE_CODES, modulePath } from './core/modules/module-code';
 import { requiresModule } from './core/modules/requires-module.guard';
 
@@ -38,6 +39,17 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home').then((m) => m.Home),
       },
       ...moduleRoutes,
+      // Administration : confort d'affichage, le serveur controle chaque appel (@RequiresPermission).
+      {
+        path: 'administration/utilisateurs',
+        canMatch: [requiresPermission('user.manage')],
+        loadComponent: () => import('./features/admin-users/admin-users').then((m) => m.AdminUsers),
+      },
+      {
+        path: 'administration/journal',
+        canMatch: [requiresPermission('audit.read')],
+        loadComponent: () => import('./features/admin-audit/admin-audit').then((m) => m.AdminAudit),
+      },
       {
         path: 'module-non-active',
         loadComponent: () =>

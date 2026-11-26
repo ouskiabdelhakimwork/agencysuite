@@ -88,6 +88,23 @@ describe('routes', () => {
     },
   );
 
+  it('sends /administration/utilisateurs typed by hand back home without user.manage', async () => {
+    const done = navigate('/administration/utilisateurs');
+    await new Promise((resolve) => setTimeout(resolve));
+    http.expectOne('/api/v1/me').flush({
+      id: 'u',
+      email: 'sales@example.test',
+      fullName: 'Sales User',
+      agency: { id: 'a', name: 'Agence Test' },
+      roles: ['SALES'],
+      permissions: ['identity.read'],
+    });
+    await done;
+
+    expect(TestBed.inject(Router).url).toBe('/');
+    http.expectNone('/api/v1/users');
+  });
+
   it('opens an enabled module once signed in', async () => {
     const done = navigate('/travel');
     await new Promise((resolve) => setTimeout(resolve));

@@ -1,0 +1,110 @@
+<section class="admin-audit">
+  <header class="page-header">
+    <h1>{{ 'admin.audit.title' | translate }}</h1>
+    @if (loading()) {
+      <span class="spinner" role="status" [attr.aria-label]="'common.loading' | translate"></span>
+    }
+  </header>
+
+  @switch (state()) {
+    @case ('error') {
+      <div class="load-error" role="alert">
+        <span>{{ 'admin.audit.loadError' | translate }}</span>
+        <button type="button" class="retry" (click)="retry()">
+          {{ 'common.retry' | translate }}
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (rows().length === 0) {
+        <p class="empty">{{ 'admin.audit.empty' | translate }}</p>
+      } @else {
+        <div class="table-wrapper">
+          <table class="audit">
+            <thead>
+              <tr>
+                <th scope="col">{{ 'admin.audit.columns.date' | translate }}</th>
+                <th scope="col">{{ 'admin.audit.columns.actor' | translate }}</th>
+                <th scope="col">{{ 'admin.audit.columns.action' | translate }}</th>
+                <th scope="col">{{ 'admin.audit.columns.target' | translate }}</th>
+                <th scope="col">{{ 'admin.audit.columns.details' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.id) {
+                <tr>
+                  <td class="date">
+                    <bdi>{{ row.occurredAt | date: dateFormat : undefined : lang() }}</bdi>
+                  </td>
+                  <td class="actor">
+                    @if (isName(row.actor)) {
+                      <bdi>{{ row.actor.name }}</bdi>
+                    } @else {
+                      {{ row.actor.key | translate }}
+                    }
+                  </td>
+                  <td class="action">{{ row.actionKey | translate }}</td>
+                  <td class="target">
+                    @if (row.target; as t) {
+                      @if (isModule(t)) {
+                        <bdi>{{ 'module.' + t.module + '.name' | translate }}</bdi>
+                      } @else if (isName(t)) {
+                        <bdi>{{ t.name }}</bdi>
+                      }
+                    }
+                  </td>
+                  <td class="details">
+                    @if (row.modules.length > 0) {
+                      <div class="detail-modules">
+                        <span class="detail-label">{{
+                          'admin.audit.details.modules' | translate
+                        }}</span>&ngsp;
+                        @for (code of row.modules; track code; let last = $last) {
+                          <bdi>{{ 'module.' + code + '.name' | translate }}</bdi>{{
+                            last ? '' : ', '
+                          }}
+                        }
+                      </div>
+                    }
+                    @if (row.roles.length > 0) {
+                      <div class="detail-roles">
+                        <span class="detail-label">{{
+                          'admin.audit.details.roles' | translate
+                        }}</span>&ngsp;
+                        @for (role of row.roles; track role; let last = $last) {
+                          <span>{{ 'role.' + role + '.name' | translate }}</span>{{
+                            last ? '' : ', '
+                          }}
+                        }
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" [attr.aria-label]="'admin.audit.pagination.label' | translate">
+          <button
+            type="button"
+            class="previous"
+            [disabled]="!hasPrevious() || loading()"
+            (click)="previous()"
+          >
+            {{ 'admin.audit.pagination.previous' | translate }}
+          </button>
+          <span class="page-number">
+            {{ 'admin.audit.pagination.page' | translate }}
+            <bdi>{{ page() + 1 }} / {{ totalPages() }}</bdi>
+          </span>
+          <button type="button" class="next" [disabled]="!hasNext() || loading()" (click)="next()">
+            {{ 'admin.audit.pagination.next' | translate }}
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>

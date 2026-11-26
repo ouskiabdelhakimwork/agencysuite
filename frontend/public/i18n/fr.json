@@ -18,7 +18,10 @@
     "serverMessage": "Message du serveur"
   },
   "nav": {
-    "label": "Modules"
+    "label": "Modules",
+    "admin": "Administration",
+    "adminUsers": "Utilisateurs",
+    "adminAudit": "Journal d'activité"
   },
   "module": {
     "TRAVEL": {
@@ -54,16 +57,20 @@
   },
   "role": {
     "MANAGER": {
-      "name": "Gérant"
+      "name": "Gérant",
+      "description": "Gère l'agence, les utilisateurs et tous les modules."
     },
     "SALES": {
-      "name": "Commercial"
+      "name": "Commercial",
+      "description": "Clients, devis et dossiers commerciaux."
     },
     "OPERATIONS": {
-      "name": "Opérations"
+      "name": "Opérations",
+      "description": "Préparation et suivi des prestations et des dossiers."
     },
     "ACCOUNTANT": {
-      "name": "Comptable"
+      "name": "Comptable",
+      "description": "Facturation, paiements et rapports financiers."
     }
   },
   "modules": {
@@ -91,6 +98,134 @@
       "notActivated": "Votre compte n'est pas activé. Contactez l'administrateur de votre agence.",
       "agencyUnavailable": "Votre agence est momentanément indisponible. Contactez l'éditeur.",
       "generic": "Vous n'avez pas accès à l'application."
+    }
+  },
+  "common": {
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "loading": "Chargement…",
+    "genericError": "Une erreur est survenue. Réessayez dans quelques instants."
+  },
+  "admin": {
+    "users": {
+      "title": "Utilisateurs",
+      "loadError": "Impossible de charger la liste des utilisateurs.",
+      "empty": "Aucun utilisateur pour le moment.",
+      "me": "(vous)",
+      "never": "Jamais",
+      "columns": {
+        "name": "Nom",
+        "email": "E-mail",
+        "roles": "Rôles",
+        "status": "Statut",
+        "lastLogin": "Dernière connexion",
+        "actions": "Actions"
+      },
+      "status": {
+        "INVITED": "Invité",
+        "ACTIVE": "Actif",
+        "DISABLED": "Désactivé",
+        "unknown": "Inconnu"
+      },
+      "actions": {
+        "invite": "Inviter un utilisateur",
+        "editRoles": "Modifier les rôles",
+        "resend": "Renvoyer l'invitation",
+        "disable": "Désactiver",
+        "enable": "Réactiver"
+      },
+      "form": {
+        "email": "E-mail",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "roles": "Rôles",
+        "errors": {
+          "required": "Champ obligatoire.",
+          "email": "Adresse e-mail invalide.",
+          "maxLength": "{{max}} caractères au plus.",
+          "noRole": "Choisissez au moins un rôle."
+        }
+      },
+      "invite": {
+        "title": "Inviter un utilisateur",
+        "submit": "Envoyer l'invitation",
+        "sent": "Invitation envoyée à {{user}}.",
+        "notSent": "L'utilisateur {{user}} est créé, mais l'e-mail d'invitation n'est pas parti."
+      },
+      "roles": {
+        "title": "Modifier les rôles",
+        "submit": "Enregistrer",
+        "saved": "Rôles de {{user}} enregistrés."
+      },
+      "ownRolesChanged": "Vos rôles ont changé.",
+      "resend": {
+        "sent": "Invitation renvoyée à {{user}}."
+      },
+      "disable": {
+        "done": "{{user}} est désactivé."
+      },
+      "enable": {
+        "done": "{{user}} est réactivé."
+      },
+      "syncFailed": "Action enregistrée pour {{user}} ; la synchronisation avec le service de connexion a échoué, réessayez.",
+      "confirm": {
+        "disable": {
+          "title": "Désactiver cet utilisateur ?",
+          "message": "Il n'aura plus accès à l'application. Ses données sont conservées et il pourra être réactivé.",
+          "confirm": "Désactiver"
+        },
+        "selfManager": {
+          "title": "Retirer votre rôle de gérant ?",
+          "message": "Vous ne pourrez plus gérer les utilisateurs.",
+          "confirm": "Retirer le rôle"
+        }
+      }
+    },
+    "audit": {
+      "title": "Journal d'activité",
+      "loadError": "Impossible de charger le journal d'activité.",
+      "empty": "Aucune action enregistrée pour le moment.",
+      "columns": {
+        "date": "Date et heure",
+        "actor": "Auteur",
+        "action": "Action",
+        "target": "Objet",
+        "details": "Détails"
+      },
+      "details": {
+        "modules": "Modules :",
+        "roles": "Rôles :"
+      },
+      "pagination": {
+        "label": "Pages du journal",
+        "previous": "Précédent",
+        "next": "Suivant",
+        "page": "Page"
+      }
+    }
+  },
+  "audit": {
+    "action": {
+      "AGENCY_CREATED": "Agence créée",
+      "MODULE_ENABLED": "Module activé",
+      "MODULE_DISABLED": "Module désactivé",
+      "USER_LOGGED_IN": "Connexion",
+      "ORGANIZATION_PROVISIONED": "Espace de connexion de l’agence créé",
+      "USER_INVITED": "Utilisateur invité",
+      "USER_ACTIVATED": "Compte activé",
+      "INVITATION_RESENT": "Invitation renvoyée",
+      "ROLE_ASSIGNED": "Rôle attribué",
+      "ROLE_REVOKED": "Rôle retiré",
+      "USER_DISABLED": "Utilisateur désactivé",
+      "USER_ENABLED": "Utilisateur réactivé"
+    },
+    "otherAction": "Autre action",
+    "actor": {
+      "agencyUser": "Utilisateur de l'agence",
+      "platform": "Équipe AgencySuite",
+      "system": "Système",
+      "unknown": "Auteur inconnu"
     }
   }
 }

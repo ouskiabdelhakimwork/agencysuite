@@ -1,0 +1,16 @@
+.date {
+  white-space: nowrap;
+}
+
+.detail-label {
+  margin-inline-end: 0.25rem;
+  color: var(--color-muted);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-block-start: 1rem;
+}

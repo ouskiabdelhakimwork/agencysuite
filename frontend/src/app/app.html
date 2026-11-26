@@ -38,6 +38,25 @@
       </li>
     }
   </ul>
+  @if (adminMenu().length > 0) {
+    <div class="admin-section">
+      <span class="nav-section-label" id="nav-admin-label">{{ 'nav.admin' | translate }}</span>
+      <ul class="nav-list" aria-labelledby="nav-admin-label">
+        @for (link of adminMenu(); track link.id) {
+          <li>
+            <a
+              class="nav-link admin-link"
+              [routerLink]="link.path"
+              routerLinkActive="active"
+              ariaCurrentWhenActive="page"
+              [attr.data-admin]="link.id"
+              >{{ link.key | translate }}</a
+            >
+          </li>
+        }
+      </ul>
+    </div>
+  }
 </nav>
 
 @if (access.state() === 'error' && !denied()) {
@@ -45,6 +64,15 @@
     <span>{{ 'modules.loadError' | translate }}</span>
     <button type="button" class="retry" (click)="retry()">
       {{ 'modules.retry' | translate }}
+    </button>
+  </div>
+}
+
+@if (notice.key(); as key) {
+  <div class="banner banner-info" role="status">
+    <span>{{ key | translate }}</span>
+    <button type="button" class="retry dismiss" (click)="notice.dismiss()">
+      {{ 'common.close' | translate }}
     </button>
   </div>
 }

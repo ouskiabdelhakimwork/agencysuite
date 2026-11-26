@@ -99,6 +99,47 @@ describe('CurrentUserService', () => {
     http.expectNone(URL);
   });
 
+  it('reload() sends a new request after ready and applies the new permissions', async () => {
+    const first = service.load();
+    http.expectOne(URL).flush(PROFILE);
+    await first;
+
+    const again = service.reload();
+    http.expectOne(URL).flush({ ...PROFILE, roles: ['SALES'], permissions: ['identity.read'] });
+    await again;
+
+    expect(service.state()).toBe('ready');
+    expect(service.profile()?.roles).toEqual(['SALES']);
+    expect(service.has('customer.read')).toBe(false);
+    expect(service.has('identity.read')).toBe(true);
+  });
+
+  it('reload() waits for a pending load, then sends its own request', async () => {
+    const first = service.load();
+    const again = service.reload();
+    http.expectOne(URL).flush(PROFILE);
+    await first;
+    await new Promise((resolve) => setTimeout(resolve));
+
+    http.expectOne(URL).flush({ ...PROFILE, permissions: [] });
+    await again;
+
+    expect(service.has('customer.read')).toBe(false);
+  });
+
+  it('reload() never rejects and closes everything on error', async () => {
+    const first = service.load();
+    http.expectOne(URL).flush(PROFILE);
+    await first;
+
+    const again = service.reload();
+    http.expectOne(URL).flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(again).resolves.toBeUndefined();
+
+    expect(service.state()).toBe('error');
+    expect(service.has('customer.read')).toBe(false);
+  });
+
   it('clear() forgets the profile', async () => {
     const first = service.load();
     http.expectOne(URL).flush(PROFILE);

@@ -65,6 +65,18 @@ export class CurrentUserService {
     return this.fetch();
   }
 
+  /**
+   * Relit le profil (nouvel appel a GET /api/v1/me), par exemple apres un changement de ses
+   * propres roles. Un chargement en cours est attendu d'abord : la reponse obtenue reflete
+   * toujours l'etat posterieur a l'appel. Ne rejette jamais.
+   */
+  reload(): Promise<void> {
+    if (!this.pending) {
+      return this.fetch();
+    }
+    return this.pending.then(() => this.pending ?? this.fetch());
+  }
+
   /** Oublie le profil (deconnexion). */
   clear(): void {
     this.profileSignal.set(null);

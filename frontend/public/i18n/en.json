@@ -18,7 +18,10 @@
     "serverMessage": "Server message"
   },
   "nav": {
-    "label": "Modules"
+    "label": "Modules",
+    "admin": "Administration",
+    "adminUsers": "Users",
+    "adminAudit": "Activity log"
   },
   "module": {
     "TRAVEL": {
@@ -54,16 +57,20 @@
   },
   "role": {
     "MANAGER": {
-      "name": "Manager"
+      "name": "Manager",
+      "description": "Manages the agency, its users and all modules."
     },
     "SALES": {
-      "name": "Sales"
+      "name": "Sales",
+      "description": "Customers, quotes and sales files."
     },
     "OPERATIONS": {
-      "name": "Operations"
+      "name": "Operations",
+      "description": "Prepares and follows up services and bookings."
     },
     "ACCOUNTANT": {
-      "name": "Accountant"
+      "name": "Accountant",
+      "description": "Invoicing, payments and financial reports."
     }
   },
   "modules": {
@@ -91,6 +98,134 @@
       "notActivated": "Your account is not activated. Contact your agency administrator.",
       "agencyUnavailable": "Your agency is temporarily unavailable. Contact the publisher.",
       "generic": "You do not have access to the application."
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Try again",
+    "loading": "Loading…",
+    "genericError": "Something went wrong. Please try again in a moment."
+  },
+  "admin": {
+    "users": {
+      "title": "Users",
+      "loadError": "The user list could not be loaded.",
+      "empty": "No users yet.",
+      "me": "(you)",
+      "never": "Never",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "roles": "Roles",
+        "status": "Status",
+        "lastLogin": "Last sign-in",
+        "actions": "Actions"
+      },
+      "status": {
+        "INVITED": "Invited",
+        "ACTIVE": "Active",
+        "DISABLED": "Disabled",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "invite": "Invite a user",
+        "editRoles": "Edit roles",
+        "resend": "Resend invitation",
+        "disable": "Disable",
+        "enable": "Enable"
+      },
+      "form": {
+        "email": "Email",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "roles": "Roles",
+        "errors": {
+          "required": "Required field.",
+          "email": "Invalid email address.",
+          "maxLength": "{{max}} characters at most.",
+          "noRole": "Choose at least one role."
+        }
+      },
+      "invite": {
+        "title": "Invite a user",
+        "submit": "Send invitation",
+        "sent": "Invitation sent to {{user}}.",
+        "notSent": "User {{user}} was created, but the invitation email was not sent."
+      },
+      "roles": {
+        "title": "Edit roles",
+        "submit": "Save",
+        "saved": "Roles of {{user}} saved."
+      },
+      "ownRolesChanged": "Your roles have changed.",
+      "resend": {
+        "sent": "Invitation resent to {{user}}."
+      },
+      "disable": {
+        "done": "{{user}} is disabled."
+      },
+      "enable": {
+        "done": "{{user}} is enabled again."
+      },
+      "syncFailed": "Action saved for {{user}}; syncing with the sign-in service failed, please try again.",
+      "confirm": {
+        "disable": {
+          "title": "Disable this user?",
+          "message": "They will no longer have access to the application. Their data is kept and they can be enabled again.",
+          "confirm": "Disable"
+        },
+        "selfManager": {
+          "title": "Remove your manager role?",
+          "message": "You will no longer be able to manage users.",
+          "confirm": "Remove role"
+        }
+      }
+    },
+    "audit": {
+      "title": "Activity log",
+      "loadError": "The activity log could not be loaded.",
+      "empty": "No actions recorded yet.",
+      "columns": {
+        "date": "Date and time",
+        "actor": "By",
+        "action": "Action",
+        "target": "Subject",
+        "details": "Details"
+      },
+      "details": {
+        "modules": "Modules:",
+        "roles": "Roles:"
+      },
+      "pagination": {
+        "label": "Log pages",
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page"
+      }
+    }
+  },
+  "audit": {
+    "action": {
+      "AGENCY_CREATED": "Agency created",
+      "MODULE_ENABLED": "Module enabled",
+      "MODULE_DISABLED": "Module disabled",
+      "USER_LOGGED_IN": "Signed in",
+      "ORGANIZATION_PROVISIONED": "Agency sign-in space created",
+      "USER_INVITED": "User invited",
+      "USER_ACTIVATED": "Account activated",
+      "INVITATION_RESENT": "Invitation resent",
+      "ROLE_ASSIGNED": "Role assigned",
+      "ROLE_REVOKED": "Role removed",
+      "USER_DISABLED": "User disabled",
+      "USER_ENABLED": "User enabled"
+    },
+    "otherAction": "Other action",
+    "actor": {
+      "agencyUser": "Agency user",
+      "platform": "AgencySuite team",
+      "system": "System",
+      "unknown": "Unknown author"
     }
   }
 }

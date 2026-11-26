@@ -10,6 +10,7 @@ import { App } from './app';
 import { AuthService, AuthState } from './core/auth/auth.service';
 import { ACCESS_DENIED, CurrentUserService } from './core/auth/current-user.service';
 import { AGENCY_SCOPE_REQUIRED, ModuleAccessService } from './core/modules/module-access.service';
+import { ShellNotice } from './core/ui/shell-notice.service';
 
 const MODULES_URL = '/api/v1/me/modules';
 const ME_URL = '/api/v1/me';
@@ -74,7 +75,7 @@ describe('App', () => {
   }
 
   function menuCodes(el: HTMLElement): (string | null)[] {
-    return Array.from(el.querySelectorAll('nav.shell-nav a.nav-link')).map((a) =>
+    return Array.from(el.querySelectorAll('nav.shell-nav a.nav-link[data-module]')).map((a) =>
       a.getAttribute('data-module'),
     );
   }
@@ -184,6 +185,68 @@ describe('App', () => {
     );
 
     expect(el.querySelector('.banner-error')).toBeNull();
+  });
+
+  it('shows the translated shell notice until it is closed', async () => {
+    const fixture = TestBed.createComponent(App);
+    TestBed.inject(ShellNotice).show('admin.users.ownRolesChanged');
+    const el = await settle(fixture);
+
+    const banner = el.querySelector('.banner-info');
+    expect(banner?.getAttribute('role')).toBe('status');
+    expect(banner?.querySelector('span')?.textContent?.trim()).toBe('Vos rôles ont changé.');
+
+    banner!.querySelector<HTMLButtonElement>('button.dismiss')!.click();
+    await settle(fixture);
+    expect(el.querySelector('.banner-info')).toBeNull();
+  });
+
+  function adminLinks(
+    el: HTMLElement,
+  ): { id: string | null; href: string | null; text?: string }[] {
+    return Array.from(el.querySelectorAll('nav.shell-nav .admin-section a.admin-link')).map(
+      (a) => ({
+        id: a.getAttribute('data-admin'),
+        href: a.getAttribute('href'),
+        text: a.textContent?.trim(),
+      }),
+    );
+  }
+
+  it('hides the Administration section without any admin permission', async () => {
+    const fixture = TestBed.createComponent(App);
+    const el = await loadProfile(fixture, () =>
+      http.expectOne(ME_URL).flush({ ...PROFILE, permissions: ['customer.read'] }),
+    );
+
+    expect(el.querySelector('.admin-section')).toBeNull();
+  });
+
+  it('shows a single Administration link with audit.read only', async () => {
+    const fixture = TestBed.createComponent(App);
+    const el = await loadProfile(fixture, () =>
+      http.expectOne(ME_URL).flush({ ...PROFILE, permissions: ['audit.read'] }),
+    );
+
+    expect(el.querySelector('.admin-section .nav-section-label')?.textContent?.trim()).toBe(
+      fr.nav.admin,
+    );
+    expect(adminLinks(el)).toEqual([
+      { id: 'audit', href: '/administration/journal', text: fr.nav.adminAudit },
+    ]);
+  });
+
+  it('shows both Administration links with both permissions', async () => {
+    const fixture = TestBed.createComponent(App);
+    const el = await loadProfile(fixture, () =>
+      http.expectOne(ME_URL).flush({ ...PROFILE, permissions: ['audit.read', 'user.manage'] }),
+    );
+
+    expect(adminLinks(el)).toEqual([
+      { id: 'users', href: '/administration/utilisateurs', text: fr.nav.adminUsers },
+      { id: 'audit', href: '/administration/journal', text: fr.nav.adminAudit },
+    ]);
+    expect(menuCodes(el)).toEqual([]);
   });
 
   it('shows the error banner with a retry button that sends the request again', async () => {

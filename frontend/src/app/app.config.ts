@@ -14,6 +14,10 @@ import { AuthService } from './core/auth/auth.service';
 import { acceptLanguageInterceptor } from './core/http/accept-language.interceptor';
 import { authTokenInterceptor } from './core/http/auth-token.interceptor';
 import { DEFAULT_LANGUAGE, LanguageService } from './core/i18n/language.service';
+import { registerAppLocales } from './core/i18n/locale-data';
+
+// Donnees de langue fr et ar pour le DatePipe (dates affichees dans la langue courante).
+registerAppLocales();
 
 export const appConfig: ApplicationConfig = {
   providers: [

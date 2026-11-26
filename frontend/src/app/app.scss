@@ -77,6 +77,11 @@
 
 // Menu des modules : proprietes CSS logiques uniquement, il s'inverse seul en arabe.
 .shell-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
   padding-inline: 1.5rem;
   border-block-end: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -110,6 +115,18 @@
   }
 }
 
+// Section Administration, en fin de ligne (a gauche en arabe).
+.admin-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-section-label {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
 .banner {
   display: flex;
   align-items: center;
@@ -124,6 +141,12 @@
   background: var(--color-danger-surface);
   color: var(--color-danger);
   border-block-end: 1px solid var(--color-danger);
+}
+
+.banner-info {
+  background: #e8f1f6;
+  color: var(--color-primary);
+  border-block-end: 1px solid var(--color-primary);
 }
 
 .retry {

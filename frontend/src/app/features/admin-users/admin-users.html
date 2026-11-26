@@ -1,0 +1,283 @@
+<!-- Message traduit avec une valeur (e-mail, nom) isolee dans un <bdi>, ou detail du serveur. -->
+<ng-template #message let-m>
+  @if (m.detail) {
+    {{ m.detail }}
+  } @else {
+    @let parts = (m.key | translate: { user: slot }).split(slot);
+    <!-- Sur une seule ligne : aucun espace ne doit s'inserer autour de la valeur isolee. -->
+    <!-- prettier-ignore -->
+    <span class="msg">{{ parts[0] }}@if (parts.length > 1) {<bdi class="msg-value">{{ m.user }}</bdi>}{{ parts.slice(1).join('') }}</span>
+  }
+</ng-template>
+
+<!-- Cases a cocher des roles, avec leur description. -->
+<ng-template #roleBoxes let-group>
+  <fieldset class="roles" [formGroup]="group">
+    <legend>{{ 'admin.users.form.roles' | translate }}</legend>
+    @for (role of roles; track role) {
+      <label class="role-option">
+        <input type="checkbox" [formControlName]="role" [attr.data-role]="role" />
+        <span class="role-text">
+          <span class="role-name">{{ 'role.' + role + '.name' | translate }}</span>
+          <span class="role-description">{{ 'role.' + role + '.description' | translate }}</span>
+        </span>
+      </label>
+    }
+    @if (group.touched && group.hasError('noRole')) {
+      <p class="field-error" data-error="roles">
+        {{ 'admin.users.form.errors.noRole' | translate }}
+      </p>
+    }
+  </fieldset>
+</ng-template>
+
+<section class="admin-users">
+  <header class="page-header">
+    <h1>{{ 'admin.users.title' | translate }}</h1>
+    @if (loading()) {
+      <span class="spinner" role="status" [attr.aria-label]="'common.loading' | translate"></span>
+    }
+    <button type="button" class="primary invite" (click)="openInvite()">
+      {{ 'admin.users.actions.invite' | translate }}
+    </button>
+  </header>
+
+  @if (notice(); as n) {
+    <div
+      class="notice"
+      [class]="'notice notice-' + n.kind"
+      [attr.role]="n.kind === 'success' ? 'status' : 'alert'"
+    >
+      <span class="notice-text"
+        ><ng-container *ngTemplateOutlet="message; context: { $implicit: n }"
+      /></span>
+      @if (n.action; as a) {
+        <button
+          type="button"
+          class="notice-action"
+          [disabled]="busy()"
+          (click)="runNoticeAction(n)"
+        >
+          {{ a.key | translate }}
+        </button>
+      }
+      <button
+        type="button"
+        class="notice-close"
+        [attr.aria-label]="'common.close' | translate"
+        (click)="dismissNotice()"
+      >
+        ×
+      </button>
+    </div>
+  }
+
+  @if (panel(); as p) {
+    @if (p.mode === 'invite') {
+      <form
+        class="panel invite-form"
+        [formGroup]="inviteForm"
+        (ngSubmit)="submitInvite()"
+        novalidate
+      >
+        <h2>{{ 'admin.users.invite.title' | translate }}</h2>
+
+        <label class="field">
+          <span>{{ 'admin.users.form.email' | translate }}</span>
+          <input type="email" formControlName="email" name="email" dir="ltr" autocomplete="off" />
+          @let email = inviteForm.controls.email;
+          @if (email.touched && email.invalid) {
+            <span class="field-error" data-error="email">
+              @if (email.hasError('required')) {
+                {{ 'admin.users.form.errors.required' | translate }}
+              } @else if (email.hasError('maxlength')) {
+                {{ 'admin.users.form.errors.maxLength' | translate: { max: emailMax } }}
+              } @else {
+                {{ 'admin.users.form.errors.email' | translate }}
+              }
+            </span>
+          }
+        </label>
+
+        <div class="names">
+          @for (field of ['firstName', 'lastName']; track field) {
+            @let control = inviteForm.get(field)!;
+            <label class="field">
+              <span>{{ 'admin.users.form.' + field | translate }}</span>
+              <input type="text" [formControlName]="field" [name]="field" autocomplete="off" />
+              @if (control.touched && control.invalid) {
+                <span class="field-error" [attr.data-error]="field">
+                  @if (control.hasError('maxlength')) {
+                    {{ 'admin.users.form.errors.maxLength' | translate: { max: nameMax } }}
+                  } @else {
+                    {{ 'admin.users.form.errors.required' | translate }}
+                  }
+                </span>
+              }
+            </label>
+          }
+        </div>
+
+        <ng-container
+          *ngTemplateOutlet="roleBoxes; context: { $implicit: inviteForm.controls.roles }"
+        />
+
+        @if (formError(); as e) {
+          <p class="form-error" role="alert">
+            <ng-container *ngTemplateOutlet="message; context: { $implicit: e }" />
+          </p>
+        }
+
+        <div class="buttons">
+          <button type="button" class="cancel" (click)="closePanel()">
+            {{ 'common.cancel' | translate }}
+          </button>
+          <button type="submit" class="primary" [disabled]="busy()">
+            {{ 'admin.users.invite.submit' | translate }}
+          </button>
+        </div>
+      </form>
+    } @else {
+      <form
+        class="panel roles-form"
+        [formGroup]="rolesForm"
+        (ngSubmit)="submitRoles(p.user)"
+        novalidate
+      >
+        <h2>{{ 'admin.users.roles.title' | translate }}</h2>
+        <p class="panel-subject">
+          <bdi>{{ p.user.fullName }}</bdi> · <bdi>{{ p.user.email }}</bdi>
+        </p>
+
+        <ng-container
+          *ngTemplateOutlet="roleBoxes; context: { $implicit: rolesForm.controls.roles }"
+        />
+
+        @if (formError(); as e) {
+          <p class="form-error" role="alert">
+            <ng-container *ngTemplateOutlet="message; context: { $implicit: e }" />
+          </p>
+        }
+
+        <div class="buttons">
+          <button type="button" class="cancel" (click)="closePanel()">
+            {{ 'common.cancel' | translate }}
+          </button>
+          <button type="submit" class="primary" [disabled]="busy()">
+            {{ 'admin.users.roles.submit' | translate }}
+          </button>
+        </div>
+      </form>
+    }
+  }
+
+  @switch (state()) {
+    @case ('error') {
+      <div class="load-error" role="alert">
+        <span>{{ 'admin.users.loadError' | translate }}</span>
+        <button type="button" class="retry" (click)="reload()">
+          {{ 'common.retry' | translate }}
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (sortedUsers().length === 0) {
+        <p class="empty">{{ 'admin.users.empty' | translate }}</p>
+      } @else {
+        <div class="table-wrapper">
+          <table class="users">
+            <thead>
+              <tr>
+                <th scope="col">{{ 'admin.users.columns.name' | translate }}</th>
+                <th scope="col">{{ 'admin.users.columns.email' | translate }}</th>
+                <th scope="col">{{ 'admin.users.columns.roles' | translate }}</th>
+                <th scope="col">{{ 'admin.users.columns.status' | translate }}</th>
+                <th scope="col">{{ 'admin.users.columns.lastLogin' | translate }}</th>
+                <th scope="col">{{ 'admin.users.columns.actions' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (u of sortedUsers(); track u.id) {
+                <tr [attr.data-status]="u.status">
+                  <td class="name">
+                    <bdi>{{ u.fullName }}</bdi>
+                    @if (isMe(u)) {
+                      <span class="me">{{ 'admin.users.me' | translate }}</span>
+                    }
+                  </td>
+                  <td class="email">
+                    <bdi>{{ u.email }}</bdi>
+                  </td>
+                  <td class="roles-cell">
+                    @for (role of knownRoles(u); track role; let last = $last) {
+                      <span class="role">{{ 'role.' + role + '.name' | translate }}</span>{{
+                        last ? '' : ', '
+                      }}
+                    }
+                  </td>
+                  <td>
+                    <span class="badge" [class]="'badge badge-' + u.status.toLowerCase()">
+                      {{ statusKey(u.status) | translate }}
+                    </span>
+                  </td>
+                  <td class="last-login">
+                    @if (u.lastLoginAt) {
+                      <bdi>{{ u.lastLoginAt | date: dateFormat : undefined : lang() }}</bdi>
+                    } @else {
+                      {{ 'admin.users.never' | translate }}
+                    }
+                  </td>
+                  <td class="actions">
+                    <button
+                      type="button"
+                      class="edit-roles"
+                      [disabled]="busy()"
+                      (click)="openRoles(u)"
+                    >
+                      {{ 'admin.users.actions.editRoles' | translate }}
+                    </button>
+                    @if (u.status === 'INVITED') {
+                      <button
+                        type="button"
+                        class="resend"
+                        [disabled]="busy()"
+                        (click)="resend(u.id, u.email)"
+                      >
+                        {{ 'admin.users.actions.resend' | translate }}
+                      </button>
+                    }
+                    @if (u.status === 'DISABLED') {
+                      <button type="button" class="enable" [disabled]="busy()" (click)="enable(u)">
+                        {{ 'admin.users.actions.enable' | translate }}
+                      </button>
+                    } @else if (!isMe(u)) {
+                      <button
+                        type="button"
+                        class="disable"
+                        [disabled]="busy()"
+                        (click)="askDisable(u)"
+                      >
+                        {{ 'admin.users.actions.disable' | translate }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+</section>
+
+@if (confirmation(); as c) {
+  <app-confirm-dialog
+    [titleKey]="c.titleKey"
+    [messageKey]="c.messageKey"
+    [confirmKey]="c.confirmKey"
+    [subject]="c.subject"
+    (confirmed)="confirm()"
+    (cancelled)="cancelConfirmation()"
+  />
+}
