@@ -5,7 +5,7 @@ Services d'infrastructure pour développer AgencySuite sur un poste. Usage **loc
 | Service | Rôle | Adresse locale | Profil |
 |---|---|---|---|
 | PostgreSQL 18 | Bases `agencysuite` et `keycloak` | `localhost:5432` | base |
-| Keycloak 26.6 | Identité (realms `agencysuite` et `platform`) | http://localhost:8180 | base |
+| Keycloak 26.8.2 | Identité (realms `agencysuite` et `platform`) | http://localhost:8180 | base |
 | SeaweedFS | Stockage compatible S3 (remplace MinIO) | http://localhost:8333 | base |
 | RabbitMQ 4 | File de messages | console http://localhost:15672 | base |
 | Mailpit | Capture des e-mails envoyés | http://localhost:8025 | base |
@@ -139,13 +139,59 @@ $K config credentials --server http://localhost:8080 --realm master --user "$KC_
 $K update events/config -r agencysuite --config /tmp/kcadm.config -s eventsEnabled=true \
     -s 'enabledEventTypes=["LOGIN","LOGIN_ERROR","LOGOUT"]' -s eventsExpiration=7776000 \
     -s adminEventsEnabled=true -s adminEventsDetailsEnabled=false -s 'eventsListeners=[]'
-$K update events/config -r platform --config /tmp/kcadm.config -s 'eventsListeners=[]'
+$K update events/config -r platform --config /tmp/kcadm.config -s eventsEnabled=true \
+    -s 'enabledEventTypes=["LOGIN","LOGIN_ERROR","LOGOUT"]' -s eventsExpiration=7776000 \
+    -s adminEventsEnabled=true -s adminEventsDetailsEnabled=false -s 'eventsListeners=[]'
 # Consulter les derniers echecs de connexion (sans afficher l'identifiant saisi ni l'IP) :
 $K get events -r agencysuite --config /tmp/kcadm.config -q type=LOGIN_ERROR -q max=5 --fields type,clientId,error,time
 rm -f /tmp/kcadm.config
 ```
 
 (à lancer par `docker compose exec keycloak sh`.)
+
+Le realm `platform` (back-office) a les mêmes réglages depuis l'étape 3, lot 5.
+
+### Compte de service du backend : invitations (étape 3, lot 5)
+
+Le backend invite les utilisateurs et crée l'Organization de chaque agence par l'API d'administration de Keycloak, avec le compte de service du client **confidentiel** `agencysuite-backend` (realm `agencysuite`) :
+
+- seuls les *comptes de service* sont activés (pas de connexion interactive, pas d'accès par mot de passe, pas de flux implicite) ;
+- rôles du client `realm-management` : **`manage-users`** (créer, désactiver, supprimer les utilisateurs, envoyer l'e-mail d'invitation, fermer les sessions) et **`manage-organizations`** (créer et lire les Organizations, ajouter les membres ; rôle propre aux Organizations depuis Keycloak 26.7). Ni `manage-realm` ni `realm-admin` ;
+- portée par défaut **`kc-admin-api`** : depuis Keycloak 26.8.2, l'API d'administration refuse (401) un jeton sans cette portée. Keycloak l'ajoute à ses propres clients, pas aux clients créés à la main.
+
+**Le secret n'est jamais dans le dépôt.** Le client est déclaré dans `agencysuite-realm.json` sans champ `secret` : Keycloak en génère un. Pour l'utiliser en local : console http://localhost:8180/admin > realm `agencysuite` > *Clients* > `agencysuite-backend` > onglet *Credentials* > copier le *Client secret* dans `deploy/.env` :
+
+```
+KEYCLOAK_BACKEND_CLIENT_SECRET=<secret copié>
+```
+
+Le backend lit `deploy/.env` au démarrage. Sans secret, il démarre quand même, et les invitations répondent 503 `identity-admin-unavailable`.
+
+Créer le client dans un realm existant **sans le réimporter**, dans le conteneur Keycloak (`docker compose exec keycloak sh`) :
+
+```sh
+K=/opt/keycloak/bin/kcadm.sh
+C="--config /tmp/kcadm.config"
+$K config credentials --server http://localhost:8080 --realm master --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD" $C
+$K create clients -r agencysuite $C -s clientId=agencysuite-backend -s 'name=AgencySuite - backend (compte de service)' \
+    -s enabled=true -s publicClient=false -s clientAuthenticatorType=client-secret -s serviceAccountsEnabled=true \
+    -s standardFlowEnabled=false -s implicitFlowEnabled=false -s directAccessGrantsEnabled=false \
+    -s 'redirectUris=[]' -s 'webOrigins=[]'
+$K add-roles -r agencysuite $C --uusername service-account-agencysuite-backend --cclientid realm-management \
+    --rolename manage-users --rolename manage-organizations
+CID=$($K get clients -r agencysuite $C -q clientId=agencysuite-backend --fields id --format csv --noquotes)
+SID=$($K get client-scopes -r agencysuite $C --fields id,name --format csv --noquotes | grep ',kc-admin-api$' | cut -d, -f1)
+$K update clients/$CID/default-client-scopes/$SID -r agencysuite $C
+rm -f /tmp/kcadm.config
+```
+
+Points d'attention constatés sur Keycloak 26.8.2 (vérifications préalables du lot 5) :
+
+- une Organization se retrouve par son alias avec `GET .../organizations?q=alias:<uuid>` (correspondance exacte) ; le paramètre `search` ne porte que sur le **nom** ;
+- le nom d'une Organization est **unique** dans le realm : le backend la nomme `<nom de l'agence> (<sous-domaine>)` ;
+- un `PUT /admin/realms/agencysuite/users/{id}` qui contient `attributes` **remplace tout le profil** (e-mail, prénom et nom effacés) : n'envoyer que les champs modifiés, par exemple `{"enabled": false}`.
+
+L'e-mail d'invitation part par Mailpit (http://localhost:8025), dans la langue par défaut de l'agence (attribut `locale` de l'utilisateur). Le lien est valable 72 heures (`agencysuite.keycloak-admin.invitation-lifespan`).
 
 ## Points de vigilance
 

@@ -89,6 +89,35 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "agencysuite-backend",
+      "name": "AgencySuite - backend (compte de service)",
+      "description": "Compte de service du backend pour l'API d'administration (invitations, Organizations). Aucun secret ici : Keycloak le genere ; il est copie dans deploy/.env (KEYCLOAK_BACKEND_CLIENT_SECRET).",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": ["web-origins", "service_account", "acr", "kc-admin-api", "roles", "profile", "basic", "email"]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-agencysuite-backend",
+      "enabled": true,
+      "serviceAccountClientId": "agencysuite-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "manage-organizations"]
+      }
     }
   ]
 }

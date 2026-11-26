@@ -37,12 +37,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *       claim {@code organization}. Ce claim est la liste des alias des Organizations Keycloak de
  *       l'utilisateur ; l'alias est l'UUID de l'agence. Exactement une Organization est attendue.
  *       L'agence doit exister et etre operationnelle (verifie dans son propre perimetre), puis le
- *       {@code sub} doit etre celui d'un utilisateur ACTIVE de cette agence : la suite de la
+ *       {@code sub} doit etre celui d'un utilisateur ACTIVE ou INVITED de cette agence : la suite de la
  *       chaine s'execute alors avec cet utilisateur et ses permissions ({@code UserContext}), auteur des
  *       actions ({@code ActorContext}).</li>
  * </ul>
  *
- * <p>Un jeton valide ne suffit donc pas (ferme par defaut) : utilisateur inconnu, invite ou
+ * <p>Un jeton valide ne suffit donc pas (ferme par defaut) : utilisateur inconnu ou
  * desactive &rarr; 403 access-denied, sans distinguer les cas. Aucune ecriture en base ici.
  *
  * <p>Requete sans jeton du realm attendu (route publique) : pas de perimetre, donc rien de visible.
@@ -131,7 +131,7 @@ final class TenantScopeFilter extends OncePerRequestFilter {
             }
             Optional<CurrentUser> user = users.resolveAgencyUser(jwt.getSubject());
             if (user.isEmpty()) {
-                // Meme reponse pour un utilisateur inconnu dans cette agence, invite ou desactive.
+                // Meme reponse pour un utilisateur inconnu dans cette agence ou desactive.
                 LOG.debug("Utilisateur inconnu ou inactif dans l'agence {} : sub={}", agencyId, jwt.getSubject());
                 problems.write(request, response, HttpStatus.FORBIDDEN, "access-denied");
                 return;

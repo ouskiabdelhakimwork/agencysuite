@@ -60,3 +60,13 @@ agencysuite:
     agency-issuer: ${KEYCLOAK_AGENCY_ISSUER:http://localhost:8180/realms/agencysuite}
     platform-issuer: ${KEYCLOAK_PLATFORM_ISSUER:http://localhost:8180/realms/platform}
     audience: agencysuite-api
+  keycloak-admin:
+    # API d'administration Keycloak, compte de service du client confidentiel agencysuite-backend
+    # (etape 3, lot 5). Le secret n'est jamais dans le depot : variable d'environnement, en local
+    # deploy/.env. Sans secret, l'application demarre et les invitations repondent 503.
+    base-url: ${KEYCLOAK_BASE_URL:http://localhost:8180}
+    realm: agencysuite
+    client-id: agencysuite-backend
+    client-secret: ${KEYCLOAK_BACKEND_CLIENT_SECRET:}
+    invitation-lifespan: PT72H
+    app-base-url: ${APP_BASE_URL:http://localhost:4200}

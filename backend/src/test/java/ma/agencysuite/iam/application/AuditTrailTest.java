@@ -1,5 +1,6 @@
 package ma.agencysuite.iam.application;
 
+import static ma.agencysuite.TestTokens.agencyUser;
 import static ma.agencysuite.TestTokens.platform;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -8,11 +9,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.UUID;
 import ma.agencysuite.TestcontainersConfiguration;
 import ma.agencysuite.iam.AuditTestData;
 import ma.agencysuite.iam.AuditTestData.Row;
+import ma.agencysuite.iam.FakeIdentityProviderAdmin;
 import ma.agencysuite.platform.PlatformTestData;
 import ma.agencysuite.shared.module.ModuleCode;
 import org.junit.jupiter.api.AfterEach;
@@ -39,11 +44,14 @@ class AuditTrailTest {
     private PlatformTestData data;
     @Autowired
     private AuditTestData audit;
+    @Autowired
+    private FakeIdentityProviderAdmin identityProvider;
 
     private final String suffix = PlatformTestData.randomSuffix();
 
     @AfterEach
     void deleteTestAgencies() {
+        identityProvider.reset();
         data.deleteAgenciesWithSuffix(suffix);
     }
 
@@ -111,6 +119,59 @@ class AuditTrailTest {
         assertThat(entry.actorType()).isEqualTo("SYSTEM");
         assertThat(entry.actorId()).isNull();
         assertThat(entry.ip()).isNull();
+    }
+
+    /**
+     * Etape 3, lot 5 : chaque action sur les utilisateurs (section 5 du plan) produit son entree, sans
+     * e-mail ni nom dans {@code details} ni dans {@code entity_id}.
+     */
+    @Test
+    void everyUserActionIsRecordedWithoutPersonalData() throws Exception {
+        UUID agencyId = createAgency(mvc, "audit-users-" + suffix);
+        String managerEmail = "gerant-" + suffix + "@example.test";
+        String salesEmail = "vendeur-" + suffix + "@example.test";
+        // Back-office : Organization creee puis gerant invite.
+        String manager = JsonPath.read(mvc.perform(post("/api/v1/backoffice/agencies/" + agencyId + "/manager")
+                        .with(platform()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"%s\", \"firstName\": \"Gerant\", \"lastName\": \"Audite\"}"
+                                .formatted(managerEmail)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        String managerSub = identityProvider.userByEmail(managerEmail).orElseThrow().sub();
+        // Le gerant invite se connecte (ACTIVE), puis gere un vendeur.
+        mvc.perform(post("/api/v1/me/login-events").with(agencyUser(agencyId, managerSub)))
+                .andExpect(status().isNoContent());
+        String sales = JsonPath.read(mvc.perform(post("/api/v1/users").with(agencyUser(agencyId, managerSub))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"%s\", \"firstName\": \"Vendeur\", \"lastName\": \"Audite\", \"roles\": [\"SALES\"]}"
+                                .formatted(salesEmail)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(post("/api/v1/users/" + sales + "/invitation").with(agencyUser(agencyId, managerSub)))
+                .andExpect(status().isAccepted());
+        mvc.perform(put("/api/v1/users/" + sales + "/roles").with(agencyUser(agencyId, managerSub))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"roles\": [\"OPERATIONS\"]}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/users/" + sales + "/disable").with(agencyUser(agencyId, managerSub)))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/users/" + sales + "/enable").with(agencyUser(agencyId, managerSub)))
+                .andExpect(status().isOk());
+
+        List<Row> entries = audit.entries(agencyId);
+        Map<String, Row> byAction = entries.stream()
+                .collect(Collectors.toMap(Row::action, Function.identity(), (first, second) -> second));
+        assertThat(byAction).containsKeys("ORGANIZATION_PROVISIONED", "USER_INVITED", "USER_ACTIVATED",
+                "USER_LOGGED_IN", "INVITATION_RESENT", "ROLE_ASSIGNED", "ROLE_REVOKED", "USER_DISABLED", "USER_ENABLED");
+        assertThat(byAction.get("USER_ACTIVATED").entityId()).isEqualTo(manager);
+        assertThat(byAction.get("USER_DISABLED").entityId()).isEqualTo(sales);
+        assertThat(byAction.get("ROLE_REVOKED").details()).isEqualTo("{\"role\": \"SALES\"}");
+        assertThat(entries).allSatisfy(row -> {
+            for (String marker : List.of("@", "example.test", "Gerant", "Vendeur", "Audite")) {
+                assertThat(row.details()).as("details de %s", row.action()).doesNotContain(marker);
+                assertThat(row.entityId()).as("entity_id de %s", row.action()).doesNotContain(marker);
+            }
+        });
+        // Actions du gerant : auteur AGENCY_USER ; rattachement : auteur PLATFORM_USER.
+        assertThat(byAction.get("USER_DISABLED").actorType()).isEqualTo("AGENCY_USER");
+        assertThat(byAction.get("ORGANIZATION_PROVISIONED").actorType()).isEqualTo("PLATFORM_USER");
     }
 
     /** Cree une agence par le back-office (modules TICKETING et TRAVEL) ; renvoie son identifiant. */

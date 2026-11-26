@@ -32,6 +32,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class CurrentUserResolver {
 
     private static final Logger LOG = LoggerFactory.getLogger(CurrentUserResolver.class);
+    /** Statuts qui donnent acces a l'application. */
+    private static final Set<UserStatus> ALLOWED = EnumSet.of(UserStatus.INVITED, UserStatus.ACTIVE);
 
     private final UserAccountRepository users;
     private final PlatformUserRepository platformUsers;
@@ -46,14 +48,18 @@ public class CurrentUserResolver {
     }
 
     /**
-     * Utilisateur ACTIVE de l'agence courante ayant ce sub, avec l'union des permissions de ses
-     * roles. Vide s'il est inconnu dans cette agence, invite ou desactive, ou hors perimetre agence.
+     * Utilisateur INVITED ou ACTIVE de l'agence courante ayant ce sub, avec l'union des permissions de
+     * ses roles. Vide s'il est inconnu dans cette agence, desactive, ou hors perimetre agence.
+     *
+     * <p>Un invite est accepte (etape 3, lot 5) : Keycloak ne lui delivre un jeton qu'apres la
+     * verification de son e-mail et le choix de son mot de passe. Il passe ACTIVE a sa premiere
+     * connexion signalee ({@link LoginEvents}).
      */
     public Optional<CurrentUser> resolveAgencyUser(String sub) {
         if (sub == null || !(TenantContext.current().orElse(null) instanceof TenantScope.Agency)) {
             return Optional.empty();
         }
-        List<UserPermissionRow> rows = readOnly.execute(status -> users.findWithPermissions(sub, UserStatus.ACTIVE));
+        List<UserPermissionRow> rows = readOnly.execute(status -> users.findWithPermissions(sub, ALLOWED));
         if (rows == null || rows.isEmpty()) {
             return Optional.empty();
         }

@@ -74,13 +74,20 @@ class CurrentUserResolverTest {
         assertThat(inAgency(agencyA, sub)).hasValueSatisfying(user -> assertThat(user.permissions()).isEmpty());
     }
 
+    /** Etape 3, lot 5 : un invite est accepte (Keycloak ne lui delivre un jeton qu'apres son inscription). */
     @Test
-    void invitedOrDisabledUserIsNotResolved() {
+    void invitedUserIsResolvedWithThePermissionsOfItsRoles() {
         String invited = iam.createUser(agencyA, UserStatus.INVITED, "MANAGER");
+
+        assertThat(inAgency(agencyA, invited))
+                .hasValueSatisfying(user -> assertThat(user.permissions()).contains(PermissionCode.USER_MANAGE));
+    }
+
+    @Test
+    void disabledUserIsNotResolved() {
         String disabled = iam.createUser(agencyA, UserStatus.ACTIVE, "MANAGER");
         iam.disableUser(agencyA, disabled);
 
-        assertThat(inAgency(agencyA, invited)).isEmpty();
         assertThat(inAgency(agencyA, disabled)).isEmpty();
     }
 

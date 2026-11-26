@@ -9,5 +9,15 @@ public enum AuditAction {
     AGENCY_CREATED,
     MODULE_ENABLED,
     MODULE_DISABLED,
-    USER_LOGGED_IN
+    USER_LOGGED_IN,
+    /** Organization Keycloak de l'agence creee (premiere invitation ou rattachement du gerant). */
+    ORGANIZATION_PROVISIONED,
+    USER_INVITED,
+    /** Premiere connexion d'un utilisateur invite : INVITED &rarr; ACTIVE. */
+    USER_ACTIVATED,
+    INVITATION_RESENT,
+    ROLE_ASSIGNED,
+    ROLE_REVOKED,
+    USER_DISABLED,
+    USER_ENABLED
 }

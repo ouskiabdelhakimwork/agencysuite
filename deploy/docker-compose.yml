@@ -35,7 +35,7 @@ services:
 
   # Fournisseur d'identite (ADR-08) : realms agencysuite et platform importes au demarrage
   keycloak:
-    image: quay.io/keycloak/keycloak:26.6
+    image: quay.io/keycloak/keycloak:26.8.2
     command: ["start-dev", "--import-realm"]
     environment:
       KC_DB: postgres

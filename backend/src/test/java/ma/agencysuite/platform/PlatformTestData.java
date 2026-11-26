@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -14,8 +15,11 @@ import ma.agencysuite.platform.application.ModuleActivation;
 import ma.agencysuite.platform.domain.Agency;
 import ma.agencysuite.platform.domain.AgencyModule;
 import ma.agencysuite.platform.domain.AgencyModuleId;
+import ma.agencysuite.platform.domain.Subscription;
+import ma.agencysuite.platform.domain.SubscriptionPeriod;
 import ma.agencysuite.platform.infrastructure.AgencyModuleRepository;
 import ma.agencysuite.platform.infrastructure.AgencyRepository;
+import ma.agencysuite.platform.infrastructure.SubscriptionRepository;
 import ma.agencysuite.shared.module.ModuleCode;
 import ma.agencysuite.shared.tenant.TenantContext;
 import org.springframework.stereotype.Component;
@@ -44,10 +48,11 @@ public class PlatformTestData {
     private final EntityManager entityManager;
     private final IamTestData iam;
     private final DataSource dataSource;
+    private final SubscriptionRepository subscriptions;
 
     PlatformTestData(AgencyRepository agencies, AgencyModuleRepository agencyModules,
             ModuleActivation moduleActivation, TransactionTemplate transaction, EntityManager entityManager,
-            IamTestData iam, DataSource dataSource) {
+            IamTestData iam, DataSource dataSource, SubscriptionRepository subscriptions) {
         this.agencies = agencies;
         this.agencyModules = agencyModules;
         this.moduleActivation = moduleActivation;
@@ -55,6 +60,7 @@ public class PlatformTestData {
         this.entityManager = entityManager;
         this.iam = iam;
         this.dataSource = dataSource;
+        this.subscriptions = subscriptions;
     }
 
     /** Suffixe aleatoire (8 caracteres hexadecimaux) a ajouter aux sous-domaines d'un test. */
@@ -83,6 +89,20 @@ public class PlatformTestData {
 
     public void disable(UUID agencyId, ModuleCode module) {
         TenantContext.runAsPlatform(() -> moduleActivation.disable(agencyId, module));
+    }
+
+    /** Abonnement actif de l'agence a ce palier (quota d'utilisateurs : STARTER 3, PRO 10, BUSINESS illimite). */
+    public void subscribe(UUID agencyId, String planCode) {
+        TenantContext.runAsPlatform(() -> transaction.executeWithoutResult(status -> subscriptions.save(
+                Subscription.start(agencyId, planCode, SubscriptionPeriod.MONTHLY, LocalDate.of(2026, 12, 1)))));
+    }
+
+    /** Passe l'agence au statut CLOSED (aucune transition du domaine n'y mene encore). */
+    public void close(UUID agencyId) {
+        TenantContext.runAsPlatform(() -> transaction.executeWithoutResult(status -> entityManager
+                .createNativeQuery("UPDATE agency SET status = 'CLOSED' WHERE id = :id")
+                .setParameter("id", agencyId)
+                .executeUpdate()));
     }
 
     /** Passe l'agence au statut SUSPENDED. */

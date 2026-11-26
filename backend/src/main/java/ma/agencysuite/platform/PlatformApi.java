@@ -29,4 +29,11 @@ public interface PlatformApi {
 
     /** Nom de l'agence. Vide si elle est inconnue ou si le perimetre courant ne permet pas de la lire. */
     Optional<String> agencyName(AgencyId agencyId);
+
+    /**
+     * Nom, sous-domaine, langue par defaut, statut clos et palier (nombre maximal d'utilisateurs)
+     * de l'agence, pour la gestion de ses utilisateurs. Vide si elle est inconnue ou si le perimetre
+     * courant ne permet pas de la lire.
+     */
+    Optional<AgencyUserSettings> userSettings(AgencyId agencyId);
 }

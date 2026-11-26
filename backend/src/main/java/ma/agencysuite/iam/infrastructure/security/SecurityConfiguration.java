@@ -30,7 +30,7 @@ import tools.jackson.databind.json.JsonMapper;
  *   <li>{@code /api/v1/backoffice/**} : jeton du realm "platform" uniquement, d'un membre ACTIVE de
  *       l'editeur &rarr; perimetre plateforme ;</li>
  *   <li>{@code /api/**} : {@code GET /api/v1/platform/info} public ; tout le reste exige un jeton du
- *       realm "agencysuite", d'un utilisateur ACTIVE de son agence &rarr; perimetre de cette agence
+ *       realm "agencysuite", d'un utilisateur ACTIVE ou INVITED de son agence &rarr; perimetre de cette agence
  *       et utilisateur courant ;</li>
  *   <li>tout le reste : sante et informations de l'actuator, documentation OpenAPI et page
  *       d'erreur publiques ; tout autre chemin refuse.</li>

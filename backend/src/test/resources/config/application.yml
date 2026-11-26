@@ -11,3 +11,8 @@ agencysuite:
     agency-issuer: https://keycloak.test/realms/agencysuite
     platform-issuer: https://keycloak.test/realms/platform
     audience: agencysuite-api
+  keycloak-admin:
+    # Aucun Keycloak contacte : l'adaptateur est remplace par FakeIdentityProviderAdmin. Secret vide
+    # meme si deploy/.env en definit un en local.
+    base-url: https://keycloak.test
+    client-secret: ""

@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Connexion de l'utilisateur courant de l'agence, signalee par l'interface juste apres le retour du
  * fournisseur d'identite : met a jour last_login_at et trace USER_LOGGED_IN, dans une transaction.
  *
+ * <p>Premiere connexion d'un invite : il passe ACTIVE, trace USER_ACTIVATED (avant USER_LOGGED_IN).
+ *
  * <p>Une seconde connexion du meme utilisateur a moins de {@link #MIN_INTERVAL} est ignoree (ni
  * entree ni mise a jour) : protection contre les rechargements en boucle, pas une securite. Les
  * echecs de connexion sont vus par Keycloak (evenements du realm), pas par l'application.
@@ -47,7 +49,9 @@ public class LoginEvents {
                 .orElseThrow(() -> new IllegalStateException("Utilisateur courant introuvable"));
         Instant now = Instant.now();
         String userId = user.getId().toString();
-        if (entries.existsByAgencyIdAndActionAndEntityIdAndOccurredAtAfter(agencyId.value(),
+        if (user.activateOnFirstLogin()) {
+            audit.record(agencyId, AuditAction.USER_ACTIVATED, USER, userId, Map.of());
+        } else if (entries.existsByAgencyIdAndActionAndEntityIdAndOccurredAtAfter(agencyId.value(),
                 AuditAction.USER_LOGGED_IN, userId, now.minus(MIN_INTERVAL))) {
             return false;
         }

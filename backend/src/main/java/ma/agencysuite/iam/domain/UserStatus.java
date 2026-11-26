@@ -1,8 +1,11 @@
 package ma.agencysuite.iam.domain;
 
-/** Etat du compte d'un utilisateur d'agence. Seul ACTIVE donne acces a l'application. */
+/**
+ * Etat du compte d'un utilisateur d'agence. INVITED et ACTIVE donnent acces a l'application
+ * (etape 3, lot 5) ; DISABLED, jamais.
+ */
 public enum UserStatus {
-    /** Invitation envoyee, compte pas encore active (lot 5). */
+    /** Invitation envoyee ; passe ACTIVE a la premiere connexion (POST /api/v1/me/login-events). */
     INVITED,
     ACTIVE,
     /** Compte desactive par l'agence : plus aucun acces, donnees conservees. */

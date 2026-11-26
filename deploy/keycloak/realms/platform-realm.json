@@ -12,7 +12,12 @@
   "verifyEmail": true,
   "bruteForceProtected": true,
   "failureFactor": 5,
+  "eventsEnabled": true,
   "eventsListeners": [],
+  "eventsExpiration": 7776000,
+  "enabledEventTypes": ["LOGIN", "LOGIN_ERROR", "LOGOUT"],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
   "passwordPolicy": "length(14) and notUsername and notEmail",
   "requiredActions": [
     {

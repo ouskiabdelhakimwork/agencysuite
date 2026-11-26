@@ -2,7 +2,16 @@ package ma.agencysuite.iam.api;
 
 import java.net.URI;
 import java.util.Locale;
+import ma.agencysuite.iam.application.AgencyClosedException;
+import ma.agencysuite.iam.application.CannotDisableSelfException;
+import ma.agencysuite.iam.application.EmailAlreadyRegisteredException;
+import ma.agencysuite.iam.application.IdentityAdminUnavailableException;
+import ma.agencysuite.iam.application.LastManagerException;
 import ma.agencysuite.iam.application.PermissionDeniedException;
+import ma.agencysuite.iam.application.UnknownAgencyException;
+import ma.agencysuite.iam.application.UserNotFoundException;
+import ma.agencysuite.iam.application.UserNotInvitedException;
+import ma.agencysuite.iam.application.UserQuotaExceededException;
 import ma.agencysuite.iam.application.UserRequiredException;
 import ma.agencysuite.shared.i18n.SupportedLocale;
 import org.springframework.context.MessageSource;
@@ -39,6 +48,47 @@ class IamProblemHandler {
     @ExceptionHandler(UserRequiredException.class)
     ResponseEntity<ProblemDetail> userRequired(UserRequiredException e, Locale locale) {
         return problem(HttpStatus.FORBIDDEN, "access-denied", locale);
+    }
+
+    @ExceptionHandler({UserNotFoundException.class, UnknownAgencyException.class})
+    ResponseEntity<ProblemDetail> notFound(RuntimeException e, Locale locale) {
+        return problem(HttpStatus.NOT_FOUND, "not-found", locale);
+    }
+
+    @ExceptionHandler(EmailAlreadyRegisteredException.class)
+    ResponseEntity<ProblemDetail> emailAlreadyRegistered(EmailAlreadyRegisteredException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "email-already-registered", locale);
+    }
+
+    @ExceptionHandler(UserQuotaExceededException.class)
+    ResponseEntity<ProblemDetail> userQuotaExceeded(UserQuotaExceededException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "user-quota-exceeded", locale);
+    }
+
+    @ExceptionHandler(LastManagerException.class)
+    ResponseEntity<ProblemDetail> lastManager(LastManagerException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "last-manager", locale);
+    }
+
+    @ExceptionHandler(CannotDisableSelfException.class)
+    ResponseEntity<ProblemDetail> cannotDisableSelf(CannotDisableSelfException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "cannot-disable-self", locale);
+    }
+
+    @ExceptionHandler(UserNotInvitedException.class)
+    ResponseEntity<ProblemDetail> userNotInvited(UserNotInvitedException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "user-not-invited", locale);
+    }
+
+    @ExceptionHandler(AgencyClosedException.class)
+    ResponseEntity<ProblemDetail> agencyClosed(AgencyClosedException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "agency-closed", locale);
+    }
+
+    /** Le message (operation et statut HTTP) reste dans le serveur : jamais renvoye au client. */
+    @ExceptionHandler(IdentityAdminUnavailableException.class)
+    ResponseEntity<ProblemDetail> identityAdminUnavailable(IdentityAdminUnavailableException e, Locale locale) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "identity-admin-unavailable", locale);
     }
 
     private ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, Locale requested, Object... args) {

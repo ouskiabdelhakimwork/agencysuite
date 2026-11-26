@@ -4,12 +4,19 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
+import ma.agencysuite.platform.AgencyUserSettings;
 import ma.agencysuite.platform.PlatformApi;
 import ma.agencysuite.platform.domain.Agency;
 import ma.agencysuite.platform.domain.AgencyModule;
 import ma.agencysuite.platform.domain.AgencyModuleId;
+import ma.agencysuite.platform.domain.AgencyStatus;
+import ma.agencysuite.platform.domain.Plan;
+import ma.agencysuite.platform.domain.Subscription;
+import ma.agencysuite.platform.domain.SubscriptionStatus;
 import ma.agencysuite.platform.infrastructure.AgencyModuleRepository;
 import ma.agencysuite.platform.infrastructure.AgencyRepository;
+import ma.agencysuite.platform.infrastructure.PlanRepository;
+import ma.agencysuite.platform.infrastructure.SubscriptionRepository;
 import ma.agencysuite.shared.module.ModuleCode;
 import ma.agencysuite.shared.tenant.AgencyId;
 import ma.agencysuite.shared.tenant.TenantContext;
@@ -38,12 +45,16 @@ class PlatformApiService implements PlatformApi {
 
     private final AgencyRepository agencies;
     private final AgencyModuleRepository agencyModules;
+    private final SubscriptionRepository subscriptions;
+    private final PlanRepository plans;
     private final TransactionTemplate readOnly;
 
     PlatformApiService(AgencyRepository agencies, AgencyModuleRepository agencyModules,
-            PlatformTransactionManager transactionManager) {
+            SubscriptionRepository subscriptions, PlanRepository plans, PlatformTransactionManager transactionManager) {
         this.agencies = agencies;
         this.agencyModules = agencyModules;
+        this.subscriptions = subscriptions;
+        this.plans = plans;
         this.readOnly = new TransactionTemplate(transactionManager);
         this.readOnly.setReadOnly(true);
     }
@@ -88,6 +99,22 @@ class PlatformApiService implements PlatformApi {
             return Optional.empty();
         }
         return readOnly.execute(status -> agencies.findById(agencyId.value()).map(Agency::getName));
+    }
+
+    @Override
+    public Optional<AgencyUserSettings> userSettings(AgencyId agencyId) {
+        if (!currentScopeMayRead(agencyId)) {
+            return Optional.empty();
+        }
+        return readOnly.execute(status -> agencies.findById(agencyId.value()).map(agency -> {
+            Optional<Plan> plan = subscriptions.findByAgencyIdAndStatus(agencyId.value(), SubscriptionStatus.ACTIVE)
+                    .map(Subscription::getPlanCode)
+                    .flatMap(plans::findById);
+            Integer maxUsers = plan.flatMap(p -> p.getMaxUsers().isPresent()
+                    ? Optional.of(p.getMaxUsers().getAsInt()) : Optional.<Integer>empty()).orElse(null);
+            return new AgencyUserSettings(agency.getName(), agency.getSubdomain(), agency.getDefaultLocale(),
+                    agency.getStatus() == AgencyStatus.CLOSED, plan.isPresent(), maxUsers);
+        }));
     }
 
     private static boolean currentScopeMayRead(AgencyId agencyId) {

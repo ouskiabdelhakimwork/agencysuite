@@ -136,17 +136,23 @@ class TenantScopeFilterTest {
     }
 
     @Test
-    void disabledOrInvitedUserIsAccessDeniedWithTheSameAnswerAsAnUnknownOne() throws Exception {
+    void disabledUserIsAccessDeniedWithTheSameAnswerAsAnUnknownOne() throws Exception {
         String disabled = iam.createUser(agencyA, UserStatus.ACTIVE, "MANAGER");
         mvc.perform(get(ME_MODULES).with(agencyUser(agencyA, disabled))).andExpect(status().isOk());
         iam.disableUser(agencyA, disabled);
-        String invited = iam.createUser(agencyA, UserStatus.INVITED, "MANAGER");
 
         String disabledAnswer = expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, disabled)));
-        String invitedAnswer = expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, invited)));
         String unknownAnswer = expectAccessDenied(get(ME_MODULES).with(agencyUser(agencyA, UUID.randomUUID().toString())));
 
-        assertThat(disabledAnswer).isEqualTo(unknownAnswer).isEqualTo(invitedAnswer);
+        assertThat(disabledAnswer).isEqualTo(unknownAnswer);
+    }
+
+    /** Etape 3, lot 5 : un invite a acces (il passe ACTIVE a sa premiere connexion signalee). */
+    @Test
+    void invitedUserIsAllowed() throws Exception {
+        String invited = iam.createUser(agencyA, UserStatus.INVITED, "MANAGER");
+
+        mvc.perform(get(ME_MODULES).with(agencyUser(agencyA, invited))).andExpect(status().isOk());
     }
 
     @Test

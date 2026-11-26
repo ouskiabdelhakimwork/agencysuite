@@ -93,6 +93,29 @@ public class IamTestData {
                         .getId()));
     }
 
+    /** Statut de l'utilisateur d'agence (lu dans le perimetre de son agence). */
+    public UserStatus status(UUID agencyId, UUID userId) {
+        return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx ->
+                users.findById(userId).orElseThrow().getStatus()));
+    }
+
+    /** Utilisateur d'agence (lu dans le perimetre de son agence), vide s'il n'y existe pas. */
+    public java.util.Optional<UserAccount> user(UUID agencyId, UUID userId) {
+        return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx ->
+                users.findById(userId)));
+    }
+
+    /** Codes des roles de l'utilisateur d'agence, tries. */
+    public java.util.List<String> roles(UUID agencyId, UUID userId) {
+        return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx ->
+                roles.findByUserIdOrderByRoleCode(userId).stream().map(UserRole::getRoleCode).toList()));
+    }
+
+    /** Nombre d'utilisateurs de l'agence (tous statuts). */
+    public long countUsers(UUID agencyId) {
+        return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx -> users.count()));
+    }
+
     /** Date de derniere connexion de l'utilisateur d'agence ayant ce sub. */
     public java.time.Instant lastLoginAt(UUID agencyId, String sub) {
         return TenantContext.callAsAgency(new AgencyId(agencyId), () -> transaction.execute(tx ->

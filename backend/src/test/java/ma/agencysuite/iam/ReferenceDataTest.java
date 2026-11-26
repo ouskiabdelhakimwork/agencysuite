@@ -45,6 +45,13 @@ class ReferenceDataTest {
                 .containsExactlyInAnyOrder("MANAGER", "SALES", "OPERATIONS", "ACCOUNTANT");
     }
 
+    /** Les roles acceptes par l'API (enum SystemRole) sont exactement ceux de la table system_role. */
+    @Test
+    void systemRoleEnumMatchesTheTable() {
+        assertThat(strings("SELECT code FROM system_role")).containsExactlyInAnyOrderElementsOf(
+                Arrays.stream(ma.agencysuite.iam.domain.SystemRole.values()).map(Enum::name).toList());
+    }
+
     /** Garde-fou pour les migrations futures : toute nouvelle permission doit etre donnee au gerant. */
     @Test
     void managerHasEveryPermission() {

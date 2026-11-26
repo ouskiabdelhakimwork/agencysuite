@@ -49,9 +49,10 @@ Java 25, Spring Boot 4.1 (Maven), Spring Modulith 2.1, Hibernate 7, PostgreSQL 1
   ```
   `TenantIsolationTest` échoue sinon.
 - Périmètre d'exécution via `TenantContext` (ScopedValue) : `runAsAgency` / `callAsAgency`, `runAsPlatform` / `callAsPlatform` (back-office éditeur uniquement). Sans périmètre, rien n'est visible : les tâches asynchrones doivent ouvrir leur périmètre.
-- Un service ou une API interne (`PlatformApi`…) **n'ouvre jamais** de périmètre lui-même : il lit dans le périmètre de l'appelant. Dans un périmètre agence, il refuse toute autre agence (résultat vide ou `false`). Sans périmètre, rien.
-- Le périmètre plateforme n'est ouvert que par l'entrée du back-office (`BackofficeAccessFilter`, désactivé par défaut tant que Keycloak n'est pas branché ; jeton du realm `platform` à partir de l'étape 3).
-- Tables de référence sans `agency_id` (`plan`, `module`) : lecture seule pour le rôle `agencysuite_app`, sans RLS.
+- Un service ou une API interne (`PlatformApi`…) **n'ouvre jamais** de périmètre lui-même : il lit dans le périmètre de l'appelant. Dans un périmètre agence, il refuse toute autre agence (résultat vide ou `false`). Sans périmètre, rien. Seule exception : le rattachement du gérant par le back-office (`ManagerProvisioning`, étape 3 lot 5) ouvre explicitement le périmètre de l'agence ciblée pour cette seule opération, avec un commentaire dans le code. Toute nouvelle exception se décide dans le chat projet.
+- Le périmètre plateforme n'est ouvert que par la chaîne de sécurité du back-office (`TenantScopeFilter`, jeton du realm `platform` et `platform_user` ACTIVE).
+- On n'écrit jamais une ligne d'agence depuis le périmètre plateforme : avec `@TenantId`, Hibernate y mettrait l'identifiant fictif de la plateforme. Seule exception assumée : `audit_log` (agence explicite, RLS comme barrière).
+- Tables de référence sans `agency_id` (`plan`, `module`, `permission`, `system_role`, `system_role_permission`) : lecture seule pour le rôle `agencysuite_app`, sans RLS, modifiées uniquement par migration.
 - Pas de `JdbcTemplate` ni de SQL hors Hibernate sur les tables métier.
 - Tests d'isolation pour chaque nouvel endpoint métier : l'agence A ne lit, ne modifie ni ne compte jamais les données de B.
 
