@@ -67,6 +67,19 @@ class ReferenceDataTest {
                 .containsExactly("TICKETING");
     }
 
+    /** Etape 5, lot 1 (migration V7) : repartition des permissions crm.write et supplier.write. */
+    @Test
+    void crmAndSupplierPermissionsAreSplitBetweenRoles() {
+        assertThat(rolesWith("crm.write")).containsExactlyInAnyOrder("MANAGER", "SALES", "OPERATIONS");
+        assertThat(rolesWith("supplier.write")).containsExactlyInAnyOrder("MANAGER", "OPERATIONS");
+        assertThat(strings("SELECT code FROM permission WHERE code IN ('crm.write', 'supplier.write') "
+                + "AND module_code IS NULL")).containsExactlyInAnyOrder("crm.write", "supplier.write");
+    }
+
+    private List<String> rolesWith(String permission) {
+        return strings("SELECT role_code FROM system_role_permission WHERE permission_code = '" + permission + "'");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
         "INSERT INTO permission (code) VALUES ('pirate.write')",

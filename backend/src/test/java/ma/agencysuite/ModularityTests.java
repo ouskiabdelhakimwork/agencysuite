@@ -1,6 +1,9 @@
 package ma.agencysuite;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.modulith.core.ApplicationModule;
 import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.modulith.docs.Documenter;
 
@@ -16,6 +19,20 @@ class ModularityTests {
     @Test
     void respectsModuleBoundaries() {
         MODULES.verify();
+    }
+
+    /** Etape 5, lot 1 : le CRM ne s'appuie que sur le noyau partage, et iam ne connait pas le CRM. */
+    @Test
+    void crmDependsOnlyOnSharedAndIamDoesNotDependOnCrm() {
+        assertThat(directDependencies("crm")).containsExactly("shared");
+        assertThat(directDependencies("iam")).doesNotContain("crm");
+    }
+
+    private static java.util.List<String> directDependencies(String moduleName) {
+        ApplicationModule module = MODULES.getModuleByName(moduleName).orElseThrow();
+        return module.getDirectDependencies(MODULES).uniqueModules()
+                .map(dependency -> dependency.getIdentifier().toString())
+                .distinct().sorted().toList();
     }
 
     /** Genere les diagrammes des modules dans target/spring-modulith-docs (PlantUML). */

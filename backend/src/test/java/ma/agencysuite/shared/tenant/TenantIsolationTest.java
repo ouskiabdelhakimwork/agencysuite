@@ -216,6 +216,84 @@ class TenantIsolationTest {
         }
     }
 
+    /** Tables du module crm (etape 5, lot 1) : politique attendue sur chacune. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void crmTablesHaveTheirPolicy() {
+        List<Object[]> policies = asPlatform(() -> entityManager.createNativeQuery("""
+                SELECT tablename, policyname FROM pg_policies
+                WHERE schemaname = 'public' AND tablename IN ('customer', 'contact')
+                ORDER BY tablename
+                """).getResultList());
+
+        assertThat(policies)
+                .extracting(row -> row[0] + ":" + row[1])
+                .containsExactly("contact:tenant_isolation", "customer:tenant_isolation");
+    }
+
+    /**
+     * Un contact reste dans l'agence de son client (cle composee contact (customer_id, agency_id)
+     * vers customer (id, agency_id), migration V6), meme en perimetre plateforme.
+     */
+    @Test
+    void aContactCannotBeAttachedToACustomerOfAnotherAgency() {
+        UUID customerOfA = insertCustomer(agencyA, null);
+        try {
+            assertThatThrownBy(() -> asPlatform(() -> entityManager.createNativeQuery("""
+                    INSERT INTO contact (id, agency_id, customer_id, full_name, is_primary, created_at, updated_at, version)
+                    VALUES (:id, :b, :customer, 'Contact Intrus', false, now(), now(), 0)
+                    """).setParameter("id", UUID.randomUUID()).setParameter("b", agencyB.value())
+                    .setParameter("customer", customerOfA).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("fk_contact_customer_same_agency");
+        } finally {
+            deleteRow("customer", customerOfA);
+        }
+    }
+
+    /** Le responsable d'un client est un utilisateur de la meme agence (cle composee, migration V6). */
+    @Test
+    void aCustomerOwnerMustBelongToTheSameAgency() {
+        UUID userOfA = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO user_account (id, agency_id, external_idp_id, email, status, created_at, updated_at, version)
+                VALUES (:id, :a, :sub, 'owner-check@example.test', 'ACTIVE', now(), now(), 0)
+                """).setParameter("id", userOfA).setParameter("a", agencyA.value())
+                .setParameter("sub", UUID.randomUUID().toString()).executeUpdate());
+        try {
+            assertThatThrownBy(() -> insertCustomer(agencyB, userOfA))
+                    .rootCause()
+                    .hasMessageContaining("fk_customer_owner_same_agency");
+        } finally {
+            deleteRow("user_account", userOfA);
+        }
+    }
+
+    private UUID insertCustomer(AgencyId agency, UUID owner) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> {
+            var insert = entityManager.createNativeQuery(owner == null
+                    ? """
+                      INSERT INTO customer (id, agency_id, type, name, created_at, updated_at, version)
+                      VALUES (:id, :agency, 'COMPANY', 'Societe Test', now(), now(), 0)
+                      """
+                    : """
+                      INSERT INTO customer (id, agency_id, type, name, owner_user_id, created_at, updated_at, version)
+                      VALUES (:id, :agency, 'COMPANY', 'Societe Test', :owner, now(), now(), 0)
+                      """).setParameter("id", id).setParameter("agency", agency.value());
+            if (owner != null) {
+                insert.setParameter("owner", owner);
+            }
+            return insert.executeUpdate();
+        });
+        return id;
+    }
+
+    private void deleteRow(String table, UUID id) {
+        asPlatform(() -> entityManager.createNativeQuery("DELETE FROM " + table + " WHERE id = :id")
+                .setParameter("id", id).executeUpdate());
+    }
+
     /** L'equipe de l'editeur n'est jamais visible depuis une agence, meme en SQL direct. */
     @Test
     void platformUsersAreInvisibleFromAnAgency() {

@@ -56,7 +56,8 @@ class CurrentUserResolverTest {
 
         assertThat(user).isPresent();
         assertThat(user.get().permissions()).containsExactlyInAnyOrder(
-                PermissionCode.IDENTITY_READ, PermissionCode.TICKETING_WRITE, PermissionCode.BILLING_ISSUE);
+                PermissionCode.IDENTITY_READ, PermissionCode.TICKETING_WRITE, PermissionCode.BILLING_ISSUE,
+                PermissionCode.CRM_WRITE);
     }
 
     @Test

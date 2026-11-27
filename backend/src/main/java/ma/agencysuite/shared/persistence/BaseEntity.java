@@ -15,7 +15,7 @@ import ma.agencysuite.shared.id.Uuids;
  * Base commune des entites : identifiant UUID v7, horodatages de creation et de
  * modification (UTC) et version pour le verrouillage optimiste.
  *
- * <p>Les colonnes created_by / updated_by seront ajoutees avec l'authentification (etape 3).
+ * <p>Auteur des lignes (created_by / updated_by) : voir {@link AuthoredAgencyEntity}.
  */
 @MappedSuperclass
 public abstract class BaseEntity {

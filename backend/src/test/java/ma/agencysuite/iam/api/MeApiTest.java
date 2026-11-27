@@ -67,8 +67,8 @@ class MeApiTest {
                 .andExpect(jsonPath("$.agency.name").value("Agence me-a-" + suffix))
                 .andExpect(jsonPath("$.roles", Matchers.contains("MANAGER")))
                 .andExpect(jsonPath("$.permissions", Matchers.contains(
-                        "audit.read", "billing.issue", "identity.read", "privacy.manage", "ticketing.write",
-                        "user.manage")));
+                        "audit.read", "billing.issue", "crm.write", "identity.read", "privacy.manage",
+                        "supplier.write", "ticketing.write", "user.manage")));
     }
 
     @Test
@@ -78,7 +78,8 @@ class MeApiTest {
         mvc.perform(get(ME).with(agencyUser(agencyA, sub)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.roles", Matchers.contains("OPERATIONS", "SALES")))
-                .andExpect(jsonPath("$.permissions", Matchers.contains("identity.read", "ticketing.write")));
+                .andExpect(jsonPath("$.permissions", Matchers.contains("crm.write", "identity.read",
+                        "supplier.write", "ticketing.write")));
     }
 
     @Test

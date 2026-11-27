@@ -19,5 +19,9 @@ public enum AuditAction {
     ROLE_ASSIGNED,
     ROLE_REVOKED,
     USER_DISABLED,
-    USER_ENABLED
+    USER_ENABLED,
+    /** Client archive (module crm, via AuditableEvent). */
+    CUSTOMER_ARCHIVED,
+    /** Client restaure (module crm, via AuditableEvent). */
+    CUSTOMER_RESTORED
 }

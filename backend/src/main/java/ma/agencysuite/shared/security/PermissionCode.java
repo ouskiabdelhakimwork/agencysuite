@@ -25,7 +25,11 @@ public enum PermissionCode {
     /** Billetterie (module TICKETING). */
     TICKETING_WRITE("ticketing.write"),
     /** Emission d'une facture. */
-    BILLING_ISSUE("billing.issue");
+    BILLING_ISSUE("billing.issue"),
+    /** Creation et modification des clients et de leurs contacts (etape 5). La lecture est ouverte a tous. */
+    CRM_WRITE("crm.write"),
+    /** Creation et modification des fournisseurs (etape 5, lot 3). */
+    SUPPLIER_WRITE("supplier.write");
 
     private static final Map<String, PermissionCode> BY_CODE = Arrays.stream(values())
             .collect(Collectors.toUnmodifiableMap(PermissionCode::code, Function.identity()));
