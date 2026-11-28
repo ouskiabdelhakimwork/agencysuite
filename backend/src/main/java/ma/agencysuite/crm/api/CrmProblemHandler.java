@@ -7,8 +7,11 @@ import ma.agencysuite.crm.application.ContactsCompanyOnlyException;
 import ma.agencysuite.crm.application.CustomerArchivedException;
 import ma.agencysuite.crm.application.CustomerHasContactsException;
 import ma.agencysuite.crm.application.CustomerNotFoundException;
+import ma.agencysuite.crm.application.CustomerRequestNotFoundException;
 import ma.agencysuite.crm.application.IdentityReadRequiredException;
 import ma.agencysuite.crm.application.InvalidOwnerException;
+import ma.agencysuite.crm.application.InvalidStatusTransitionException;
+import ma.agencysuite.crm.application.OwnerRequiredException;
 import ma.agencysuite.crm.application.PossibleDuplicateException;
 import ma.agencysuite.crm.application.TravelerNotFoundException;
 import ma.agencysuite.shared.i18n.SupportedLocale;
@@ -35,7 +38,7 @@ class CrmProblemHandler {
     }
 
     @ExceptionHandler({CustomerNotFoundException.class, ContactNotFoundException.class,
-            TravelerNotFoundException.class})
+            TravelerNotFoundException.class, CustomerRequestNotFoundException.class})
     ResponseEntity<ProblemDetail> notFound(RuntimeException e, Locale locale) {
         return problem(HttpStatus.NOT_FOUND, "not-found", locale);
     }
@@ -80,12 +83,36 @@ class CrmProblemHandler {
         return problem(HttpStatus.BAD_REQUEST, "invalid-owner", locale);
     }
 
+    /** Statuts de depart et d'arrivee en code (le frontend affiche les libelles), dans le detail et a part. */
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    ResponseEntity<ProblemDetail> invalidStatusTransition(InvalidStatusTransitionException e, Locale locale) {
+        String from = e.getFrom().name();
+        String to = e.getTo().name();
+        ResponseEntity<ProblemDetail> response = problem(HttpStatus.CONFLICT, "invalid-status-transition", locale,
+                from, to);
+        response.getBody().setProperty("from", from);
+        response.getBody().setProperty("to", to);
+        return response;
+    }
+
+    /** Meme code que la Bean Validation (validation-failed), detail propre au responsable manquant. */
+    @ExceptionHandler(OwnerRequiredException.class)
+    ResponseEntity<ProblemDetail> ownerRequired(OwnerRequiredException e, Locale locale) {
+        return problemWithDetail(HttpStatus.BAD_REQUEST, "validation-failed", "problem.validation-failed.owner.detail",
+                locale);
+    }
+
     private ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, Locale requested, Object... args) {
+        return problemWithDetail(status, code, "problem." + code + ".detail", requested, args);
+    }
+
+    private ResponseEntity<ProblemDetail> problemWithDetail(HttpStatus status, String code, String detailKey,
+            Locale requested, Object... args) {
         Locale locale = SupportedLocale.from(requested).locale();
         ProblemDetail problem = ProblemDetail.forStatus(status);
         problem.setType(URI.create(TYPE_PREFIX + code));
         problem.setTitle(messages.getMessage("problem." + code + ".title", null, locale));
-        problem.setDetail(messages.getMessage("problem." + code + ".detail", args, locale));
+        problem.setDetail(messages.getMessage(detailKey, args, locale));
         return ResponseEntity.status(status).body(problem);
     }
 }

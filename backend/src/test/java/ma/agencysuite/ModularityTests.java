@@ -39,6 +39,20 @@ class ModularityTests {
         assertThat(directDependencies("iam")).doesNotContain("supplier");
     }
 
+    /**
+     * Etape 5, lot 4 : les demandes restent dans crm, limite a shared (aucune dependance vers iam
+     * pour le responsable) ; l'annuaire de l'equipe est dans iam, qui ne connait toujours pas crm.
+     */
+    @Test
+    void requestsStayInCrmAndTheTeamDirectoryInIam() {
+        assertThat(directDependencies("crm")).containsExactly("shared");
+        assertThat(directDependencies("iam")).doesNotContain("crm");
+        assertThat(MODULES.getModuleByType(ma.agencysuite.crm.application.CustomerRequestRegistry.class))
+                .hasValueSatisfying(module -> assertThat(module.getIdentifier().toString()).isEqualTo("crm"));
+        assertThat(MODULES.getModuleByType(ma.agencysuite.iam.application.TeamDirectory.class))
+                .hasValueSatisfying(module -> assertThat(module.getIdentifier().toString()).isEqualTo("iam"));
+    }
+
     private static java.util.List<String> directDependencies(String moduleName) {
         ApplicationModule module = MODULES.getModuleByName(moduleName).orElseThrow();
         return module.getDirectDependencies(MODULES).uniqueModules()

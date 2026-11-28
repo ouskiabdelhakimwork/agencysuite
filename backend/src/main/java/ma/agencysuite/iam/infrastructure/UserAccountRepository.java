@@ -31,6 +31,14 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
     /** Utilisateurs de l'agence courante, par e-mail. */
     List<UserAccount> findAllByOrderByEmail();
 
+    /** Utilisateurs de l'agence courante ayant l'un de ces statuts, par nom (casse ignoree), puis identifiant. */
+    @Query("""
+            select u from UserAccount u
+            where u.status in :statuses
+            order by lower(u.fullName), u.id
+            """)
+    List<UserAccount> findByStatusInOrderByName(@Param("statuses") Collection<UserStatus> statuses);
+
     /** Vrai si un utilisateur de l'agence courante a deja cet e-mail (casse ignoree, comme l'index unique). */
     boolean existsByEmailIgnoreCase(String email);
 

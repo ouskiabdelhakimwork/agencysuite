@@ -35,5 +35,10 @@ public enum AuditAction {
     /** Prestation archivee (module supplier, via AuditableEvent ; details : type). */
     PRODUCT_ARCHIVED,
     /** Prestation restauree (module supplier, via AuditableEvent ; details : type). */
-    PRODUCT_RESTORED
+    PRODUCT_RESTORED,
+    /**
+     * Statut d'une demande change (module crm, via AuditableEvent ; entityType REQUEST ; details :
+     * from, to, et lostReason pour LOST, en code).
+     */
+    REQUEST_STATUS_CHANGED
 }

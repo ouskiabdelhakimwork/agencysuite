@@ -5,7 +5,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * Reconnaissance des contraintes des tables du module (migrations V6 et V8) dans les erreurs de la base.
+ * Reconnaissance des contraintes des tables du module (migrations V6, V8 et V10) dans les erreurs de la base.
  * Seule une contrainte nommee est reconnue : toute autre violation reste une erreur imprevue.
  */
 public final class CrmConstraints {
@@ -18,6 +18,9 @@ public final class CrmConstraints {
 
     /** Un voyageur n'est rattache qu'une fois a un meme client (cle primaire, migration V8). */
     public static final String TRAVELER_LINK = "pk_customer_traveler";
+
+    /** Le responsable d'une demande doit etre un utilisateur de la meme agence (migration V10). */
+    public static final String REQUEST_OWNER_SAME_AGENCY = "fk_request_owner_same_agency";
 
     private CrmConstraints() {
     }
@@ -33,6 +36,11 @@ public final class CrmConstraints {
     /** Vrai si l'erreur est la violation de {@value #OWNER_SAME_AGENCY} (responsable inconnu dans l'agence). */
     public static boolean isUnknownOwner(DataIntegrityViolationException error) {
         return violates(error, OWNER_SAME_AGENCY);
+    }
+
+    /** Vrai si l'erreur est la violation de {@value #REQUEST_OWNER_SAME_AGENCY} (responsable inconnu dans l'agence). */
+    public static boolean isUnknownRequestOwner(DataIntegrityViolationException error) {
+        return violates(error, REQUEST_OWNER_SAME_AGENCY);
     }
 
     /**

@@ -411,6 +411,130 @@ class TenantIsolationTest {
         }
     }
 
+    /** Table des demandes (etape 5, lot 4) : politique attendue. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void requestTableHasItsPolicy() {
+        List<Object[]> policies = asPlatform(() -> entityManager.createNativeQuery("""
+                SELECT tablename, policyname FROM pg_policies
+                WHERE schemaname = 'public' AND tablename = 'customer_request'
+                """).getResultList());
+
+        assertThat(policies)
+                .extracting(row -> row[0] + ":" + row[1])
+                .containsExactly("customer_request:tenant_isolation");
+    }
+
+    /**
+     * Une demande reste dans l'agence de son client et de son responsable (cles composees avec
+     * agency_id, migration V10), meme en perimetre plateforme ou la RLS laisse tout passer.
+     */
+    @Test
+    void aRequestCannotPointToACustomerOrAnOwnerOfAnotherAgency() {
+        UUID ownerOfA = insertUser(agencyA);
+        UUID ownerOfB = insertUser(agencyB);
+        UUID customerOfA = insertCustomer(agencyA, null);
+        try {
+            assertThatThrownBy(() -> insertRequest(agencyB, customerOfA, ownerOfB))
+                    .rootCause()
+                    .hasMessageContaining("fk_request_customer_same_agency");
+            assertThatThrownBy(() -> insertRequest(agencyA, customerOfA, ownerOfB))
+                    .rootCause()
+                    .hasMessageContaining("fk_request_owner_same_agency");
+        } finally {
+            deleteRow("customer", customerOfA);
+            deleteRow("user_account", ownerOfA);
+            deleteRow("user_account", ownerOfB);
+        }
+    }
+
+    /** Une demande perdue a toujours une raison, une autre jamais (ck_request_lost, migration V10). */
+    @Test
+    void aLostRequestAlwaysHasAReasonAndOnlyThen() {
+        UUID owner = insertUser(agencyA);
+        UUID customer = insertCustomer(agencyA, null);
+        try {
+            assertThatThrownBy(() -> asPlatform(() -> entityManager.createNativeQuery("""
+                    INSERT INTO customer_request (id, agency_id, customer_id, owner_user_id, channel, status,
+                        status_changed_at, search_key, created_at, updated_at, version)
+                    VALUES (:id, :a, :customer, :owner, 'PHONE', 'LOST', now(), '', now(), now(), 0)
+                    """).setParameter("id", UUID.randomUUID()).setParameter("a", agencyA.value())
+                    .setParameter("customer", customer).setParameter("owner", owner).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("ck_request_lost");
+            assertThatThrownBy(() -> asPlatform(() -> entityManager.createNativeQuery("""
+                    INSERT INTO customer_request (id, agency_id, customer_id, owner_user_id, channel, status,
+                        lost_reason, status_changed_at, search_key, created_at, updated_at, version)
+                    VALUES (:id, :a, :customer, :owner, 'PHONE', 'NEW', 'PRICE', now(), '', now(), now(), 0)
+                    """).setParameter("id", UUID.randomUUID()).setParameter("a", agencyA.value())
+                    .setParameter("customer", customer).setParameter("owner", owner).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("ck_request_lost");
+        } finally {
+            deleteRow("customer", customer);
+            deleteRow("user_account", owner);
+        }
+    }
+
+    /** Demandes d'une autre agence : invisibles, non comptees et non modifiables en SQL direct. */
+    @Test
+    void requestsAreIsolatedInSql() {
+        UUID owner = insertUser(agencyA);
+        UUID customer = insertCustomer(agencyA, null);
+        UUID request = insertRequest(agencyA, customer, owner);
+        try {
+            Number seenByB = asAgency(agencyB, () -> (Number) entityManager
+                    .createNativeQuery("SELECT count(*) FROM customer_request").getSingleResult());
+            Number seenByA = asAgency(agencyA, () -> (Number) entityManager
+                    .createNativeQuery("SELECT count(*) FROM customer_request").getSingleResult());
+            int updatedByB = asAgency(agencyB, () -> entityManager
+                    .createNativeQuery("UPDATE customer_request SET status = 'WON' WHERE id = :id")
+                    .setParameter("id", request).executeUpdate());
+            int deletedByB = asAgency(agencyB, () -> entityManager
+                    .createNativeQuery("DELETE FROM customer_request WHERE id = :id")
+                    .setParameter("id", request).executeUpdate());
+
+            assertThat(seenByB.longValue()).isZero();
+            assertThat(seenByA.longValue()).isEqualTo(1);
+            assertThat(updatedByB).isZero();
+            assertThat(deletedByB).isZero();
+            assertThatThrownBy(() -> asAgency(agencyB, () -> entityManager.createNativeQuery("""
+                    INSERT INTO customer_request (id, agency_id, customer_id, owner_user_id, channel,
+                        status_changed_at, search_key, created_at, updated_at, version)
+                    VALUES (:id, :a, :customer, :owner, 'PHONE', now(), '', now(), now(), 0)
+                    """).setParameter("id", UUID.randomUUID()).setParameter("a", agencyA.value())
+                    .setParameter("customer", customer).setParameter("owner", owner).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("row-level security");
+        } finally {
+            deleteRow("customer_request", request);
+            deleteRow("customer", customer);
+            deleteRow("user_account", owner);
+        }
+    }
+
+    private UUID insertUser(AgencyId agency) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO user_account (id, agency_id, external_idp_id, email, status, created_at, updated_at, version)
+                VALUES (:id, :agency, :sub, :email, 'ACTIVE', now(), now(), 0)
+                """).setParameter("id", id).setParameter("agency", agency.value())
+                .setParameter("sub", UUID.randomUUID().toString())
+                .setParameter("email", "user-" + id.toString().substring(0, 8) + "@example.test").executeUpdate());
+        return id;
+    }
+
+    private UUID insertRequest(AgencyId agency, UUID customer, UUID owner) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO customer_request (id, agency_id, customer_id, owner_user_id, channel,
+                    status_changed_at, search_key, created_at, updated_at, version)
+                VALUES (:id, :agency, :customer, :owner, 'PHONE', now(), '', now(), now(), 0)
+                """).setParameter("id", id).setParameter("agency", agency.value()).setParameter("customer", customer)
+                .setParameter("owner", owner).executeUpdate());
+        return id;
+    }
+
     private UUID insertSupplier(AgencyId agency) {
         UUID id = UUID.randomUUID();
         asPlatform(() -> entityManager.createNativeQuery("""

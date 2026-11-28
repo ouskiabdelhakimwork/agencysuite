@@ -36,6 +36,7 @@ public class PlatformTestData {
         "DELETE FROM rate WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM product WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM supplier WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
+        "DELETE FROM customer_request WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM customer_traveler WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM traveler WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM contact WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
