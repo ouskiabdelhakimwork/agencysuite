@@ -61,15 +61,17 @@ class AuditTrailTest {
 
         List<Row> entries = audit.entries(agencyId);
 
+        // Ecrites dans la meme transaction que la creation : ordre non garanti.
         assertThat(entries).extracting(Row::action)
-                .containsExactly("AGENCY_CREATED", "MODULE_ENABLED", "MODULE_ENABLED");
-        Row created = entries.getFirst();
+                .containsExactlyInAnyOrder("AGENCY_CREATED", "MODULE_ENABLED", "MODULE_ENABLED");
+        Row created = entries.stream().filter(row -> row.action().equals("AGENCY_CREATED")).findFirst().orElseThrow();
+        List<Row> enabled = entries.stream().filter(row -> row.action().equals("MODULE_ENABLED")).toList();
         assertThat(created.entityType()).isEqualTo("AGENCY");
         assertThat(created.entityId()).isEqualTo(agencyId.toString());
         assertThat(created.details()).isEqualTo("{\"plan\": \"PRO\", \"modules\": [\"TICKETING\", \"TRAVEL\"]}");
-        assertThat(entries.subList(1, 3)).extracting(Row::entityType).containsOnly("MODULE");
-        assertThat(entries.subList(1, 3)).extracting(Row::entityId).containsExactlyInAnyOrder("TICKETING", "TRAVEL");
-        assertThat(entries.subList(1, 3)).extracting(Row::details)
+        assertThat(enabled).extracting(Row::entityType).containsOnly("MODULE");
+        assertThat(enabled).extracting(Row::entityId).containsExactlyInAnyOrder("TICKETING", "TRAVEL");
+        assertThat(enabled).extracting(Row::details)
                 .containsExactlyInAnyOrder("{\"module\": \"TICKETING\"}", "{\"module\": \"TRAVEL\"}");
         assertThat(entries).allSatisfy(row -> {
             assertThat(row.actorType()).isEqualTo("PLATFORM_USER");
@@ -85,8 +87,9 @@ class AuditTrailTest {
 
         mvc.perform(delete(module(agencyId, "TRAVEL")).with(platform())).andExpect(status().isNoContent());
 
-        Row last = audit.entries(agencyId).getLast();
-        assertThat(last.action()).isEqualTo("MODULE_DISABLED");
+        Row last = audit.entries(agencyId).stream().filter(row -> row.action().equals("MODULE_DISABLED"))
+                .reduce((first, second) -> { throw new AssertionError("Plusieurs MODULE_DISABLED"); })
+                .orElseThrow();
         assertThat(last.entityType()).isEqualTo("MODULE");
         assertThat(last.entityId()).isEqualTo("TRAVEL");
         assertThat(last.details()).isEqualTo("{\"module\": \"TRAVEL\"}");
@@ -114,8 +117,8 @@ class AuditTrailTest {
             agencyId = executor.submit(() -> data.createAgency("audit-sys-" + suffix, ModuleCode.VISA)).get();
         }
 
-        Row entry = audit.entries(agencyId).getFirst();
-        assertThat(entry.action()).isEqualTo("MODULE_ENABLED");
+        Row entry = audit.entries(agencyId).stream().filter(row -> row.action().equals("MODULE_ENABLED"))
+                .findFirst().orElseThrow();
         assertThat(entry.actorType()).isEqualTo("SYSTEM");
         assertThat(entry.actorId()).isNull();
         assertThat(entry.ip()).isNull();

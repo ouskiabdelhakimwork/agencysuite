@@ -91,8 +91,9 @@ class UserInvitationsTest {
         assertThat(usersWhenSent.get()).isEqualTo(2L);
 
         List<Row> entries = audit.entries(agencyId);
-        assertThat(entries).extracting(Row::action).containsExactly("ORGANIZATION_PROVISIONED", "USER_INVITED");
-        Row invited = entries.getLast();
+        // Meme invitation : ordre non affirme.
+        assertThat(entries).extracting(Row::action).containsExactlyInAnyOrder("ORGANIZATION_PROVISIONED", "USER_INVITED");
+        Row invited = entries.stream().filter(row -> row.action().equals("USER_INVITED")).findFirst().orElseThrow();
         assertThat(invited.entityType()).isEqualTo("USER");
         assertThat(invited.entityId()).isEqualTo(result.userId().toString());
         assertThat(invited.details()).isEqualTo("{\"roles\": [\"OPERATIONS\", \"SALES\"]}");
@@ -105,7 +106,7 @@ class UserInvitationsTest {
         invite(command(email("two"), SystemRole.SALES));
 
         assertThat(audit.entries(agencyId)).extracting(Row::action)
-                .containsExactly("ORGANIZATION_PROVISIONED", "USER_INVITED", "USER_INVITED");
+                .containsExactlyInAnyOrder("ORGANIZATION_PROVISIONED", "USER_INVITED", "USER_INVITED");
     }
 
     @Test

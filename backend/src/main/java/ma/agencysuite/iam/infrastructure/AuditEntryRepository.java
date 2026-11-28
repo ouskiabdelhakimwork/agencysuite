@@ -18,7 +18,12 @@ public interface AuditEntryRepository extends Repository<AuditEntry, UUID> {
 
     AuditEntry save(AuditEntry entry);
 
-    /** Entrees de l'agence, de la plus recente a la plus ancienne (tri du Pageable ignore). */
+    /**
+     * Entrees de l'agence, de la plus recente a la plus ancienne (tri du Pageable ignore).
+     * L'identifiant departage les entrees de meme {@code occurred_at} : l'ordre est total, donc la
+     * pagination est stable. Ce departage n'est PAS l'ordre d'ecriture : dans une meme milliseconde,
+     * les bits d'un UUID v7 qui suivent l'horodatage sont aleatoires ({@code Uuids.v7()}).
+     */
     Page<AuditEntry> findByAgencyIdOrderByOccurredAtDescIdDesc(UUID agencyId, Pageable pageable);
 
     /** Vrai si l'agence a deja une entree de cette action sur cette entite depuis cet instant. */

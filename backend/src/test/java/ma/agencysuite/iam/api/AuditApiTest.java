@@ -3,16 +3,29 @@ package ma.agencysuite.iam.api;
 import static ma.agencysuite.TestTokens.agency;
 import static ma.agencysuite.TestTokens.agencyUser;
 import static ma.agencysuite.TestTokens.platform;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import ma.agencysuite.TestcontainersConfiguration;
 import ma.agencysuite.iam.IamTestData;
+import ma.agencysuite.iam.domain.AuditAction;
+import ma.agencysuite.iam.domain.AuditEntry;
 import ma.agencysuite.iam.domain.UserStatus;
+import ma.agencysuite.iam.infrastructure.AuditEntryRepository;
 import ma.agencysuite.platform.PlatformTestData;
 import ma.agencysuite.shared.module.ModuleCode;
+import ma.agencysuite.shared.security.Actor;
+import ma.agencysuite.shared.tenant.AgencyId;
+import ma.agencysuite.shared.tenant.TenantContext;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +36,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** GET /api/v1/audit-events : journal de l'agence, permission audit.read. */
 @SpringBootTest
@@ -38,6 +52,10 @@ class AuditApiTest {
     private PlatformTestData data;
     @Autowired
     private IamTestData iam;
+    @Autowired
+    private AuditEntryRepository auditEntries;
+    @Autowired
+    private TransactionTemplate transaction;
 
     private final String suffix = PlatformTestData.randomSuffix();
     private UUID agencyId;
@@ -84,6 +102,51 @@ class AuditApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.items[*].entityId", Matchers.contains("TRAVEL")));
+    }
+
+    /**
+     * Entrees de meme occurred_at (ecrites dans la meme transaction) : l'identifiant departage, l'ordre
+     * est total, donc en pages de taille 1 chaque entree apparait une et une seule fois, et toujours a
+     * la meme place.
+     */
+    @Test
+    void paginationIsStableWhenSeveralEntriesShareTheSameInstant() throws Exception {
+        Instant sameInstant = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        List<String> tied = List.of("tie-1", "tie-2", "tie-3", "tie-4", "tie-5");
+        AgencyId agency = new AgencyId(agencyId);
+        TenantContext.runAsAgency(agency, () -> transaction.executeWithoutResult(status -> {
+            for (String entityId : tied) {
+                auditEntries.save(new AuditEntry(agency, Actor.SYSTEM, AuditAction.CUSTOMER_ARCHIVED, "CUSTOMER",
+                        entityId, Map.of("type", "COMPANY"), null, sameInstant));
+            }
+        }));
+        int total = 3 + tied.size();
+
+        List<String> seen = new ArrayList<>();
+        for (int page = 0; page < total; page++) {
+            String first = pageOfOne(page);
+            assertThat(pageOfOne(page)).as("page %d relue", page).isEqualTo(first);
+            seen.add(first);
+        }
+
+        assertThat(seen).doesNotHaveDuplicates().hasSize(total);
+        assertThat(seen).filteredOn(entry -> entry.startsWith("CUSTOMER_ARCHIVED:"))
+                .extracting(entry -> entry.substring("CUSTOMER_ARCHIVED:".length()))
+                .containsExactlyInAnyOrderElementsOf(tied);
+        mvc.perform(get(EVENTS).param("page", String.valueOf(total)).param("size", "1").with(agency(agencyId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(total));
+    }
+
+    /** Action et entite de l'unique entree de la page (taille 1). */
+    private String pageOfOne(int page) throws Exception {
+        String body = mvc.perform(get(EVENTS).param("page", String.valueOf(page)).param("size", "1")
+                        .with(agency(agencyId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.items[0].action") + ":" + JsonPath.read(body, "$.items[0].entityId");
     }
 
     @Test

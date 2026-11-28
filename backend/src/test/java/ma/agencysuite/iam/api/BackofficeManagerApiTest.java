@@ -85,16 +85,20 @@ class BackofficeManagerApiTest {
         assertThat(identityProvider.membersOf(organization)).hasSize(2);
 
         List<Row> entries = audit.entries(agencyId);
+        // L'Organization et la premiere invitation sont ecrites par la meme requete : ordre non affirme.
         assertThat(entries).extracting(Row::action)
-                .containsExactly("ORGANIZATION_PROVISIONED", "USER_INVITED", "USER_INVITED");
-        assertThat(entries.getFirst().entityType()).isEqualTo("ORGANIZATION");
-        assertThat(entries.getFirst().entityId()).isEqualTo(organization);
+                .containsExactlyInAnyOrder("ORGANIZATION_PROVISIONED", "USER_INVITED", "USER_INVITED");
+        Row provisioned = entries.stream().filter(row -> row.action().equals("ORGANIZATION_PROVISIONED"))
+                .findFirst().orElseThrow();
+        assertThat(provisioned.entityType()).isEqualTo("ORGANIZATION");
+        assertThat(provisioned.entityId()).isEqualTo(organization);
         assertThat(entries).allSatisfy(row -> {
             assertThat(row.agencyId()).isEqualTo(agencyId);
             assertThat(row.actorType()).isEqualTo("PLATFORM_USER");
             assertThat(row.actorId()).isEqualTo(PLATFORM_ADMIN_ID);
         });
-        assertThat(entries.get(1).details()).isEqualTo("{\"roles\": [\"MANAGER\"]}");
+        assertThat(entries).filteredOn(row -> row.action().equals("USER_INVITED")).extracting(Row::details)
+                .containsOnly("{\"roles\": [\"MANAGER\"]}");
     }
 
     @Test

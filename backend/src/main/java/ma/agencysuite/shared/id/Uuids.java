@@ -6,7 +6,9 @@ import java.util.UUID;
 /**
  * Generation d'identifiants UUID version 7 (RFC 9562) : les 48 premiers bits portent
  * l'horodatage en millisecondes, le reste est aleatoire. Les identifiants sont donc
- * tries par date de creation, ce qui garde les index de base de donnees compacts.
+ * tries par milliseconde de creation, ce qui garde les index de base de donnees compacts.
+ * Dans une meme milliseconde, leur ordre est aleatoire (pas de compteur monotone) : ne pas
+ * s'en servir comme ordre d'ecriture.
  *
  * <p>Genere cote application (et non par la base) pour que l'identifiant existe des la
  * creation de l'objet, avant toute sauvegarde (utile pour les evenements entre modules).

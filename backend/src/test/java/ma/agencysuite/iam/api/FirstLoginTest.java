@@ -67,7 +67,8 @@ class FirstLoginTest {
         assertThat(iam.status(agencyId, userId)).isEqualTo(UserStatus.ACTIVE);
         assertThat(iam.lastLoginAt(agencyId, sub)).isNotNull();
         List<Row> entries = audit.entries(agencyId);
-        assertThat(entries).extracting(Row::action).containsExactly("USER_ACTIVATED", "USER_LOGGED_IN");
+        // Ecrites dans la meme transaction : ordre non garanti.
+        assertThat(entries).extracting(Row::action).containsExactlyInAnyOrder("USER_ACTIVATED", "USER_LOGGED_IN");
         assertThat(entries).allSatisfy(row -> {
             assertThat(row.entityId()).isEqualTo(userId.toString());
             assertThat(row.actorType()).isEqualTo("AGENCY_USER");

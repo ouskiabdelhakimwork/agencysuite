@@ -31,14 +31,20 @@ public class AuditTestData {
         this.entityManager = entityManager;
     }
 
-    /** Entrees de l'agence, dans l'ordre d'ecriture (identifiants UUID v7 croissants). */
+    /**
+     * Entrees de l'agence, par {@code occurred_at} puis identifiant (meme ordre total que l'API, a
+     * l'envers). Fiable entre transactions successives ; pour des entrees ecrites dans la meme
+     * transaction (meme {@code occurred_at} possible), l'ordre n'est pas celui d'ecriture : les tests
+     * ne l'affirment pas.
+     */
     public List<Row> entries(UUID agencyId) {
-        return query("SELECT " + COLUMNS + " FROM audit_log WHERE agency_id = :agency ORDER BY id", agencyId);
+        return query("SELECT " + COLUMNS + " FROM audit_log WHERE agency_id = :agency ORDER BY occurred_at, id",
+                agencyId);
     }
 
     /** Toutes les entrees du journal (toutes agences). */
     public List<Row> allEntries() {
-        return query("SELECT " + COLUMNS + " FROM audit_log ORDER BY id", null);
+        return query("SELECT " + COLUMNS + " FROM audit_log ORDER BY occurred_at, id", null);
     }
 
     @SuppressWarnings("unchecked")
