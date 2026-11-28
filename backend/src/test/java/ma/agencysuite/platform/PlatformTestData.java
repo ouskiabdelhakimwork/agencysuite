@@ -33,6 +33,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class PlatformTestData {
 
     private static final String[] CLEANUP = {
+        "DELETE FROM rate WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
+        "DELETE FROM product WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
+        "DELETE FROM supplier WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM customer_traveler WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM traveler WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",
         "DELETE FROM contact WHERE agency_id IN (SELECT id FROM agency WHERE subdomain LIKE :pattern)",

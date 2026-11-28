@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import ma.agencysuite.crm.domain.CustomerTraveler;
-import ma.agencysuite.crm.domain.NameKeys;
 import ma.agencysuite.crm.domain.Traveler;
 import ma.agencysuite.shared.contact.PhoneNumbers;
+import ma.agencysuite.shared.text.SearchKeys;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -44,7 +44,7 @@ public final class TravelerSpecifications {
             String text = q == null ? "" : q.strip();
             if (!text.isEmpty()) {
                 List<Predicate> any = new ArrayList<>();
-                String key = NameKeys.normalize(text);
+                String key = SearchKeys.normalize(text);
                 if (!key.isEmpty()) {
                     any.add(cb.like(root.get("nameKey"), contains(key), ESCAPE));
                 }
@@ -61,6 +61,6 @@ public final class TravelerSpecifications {
     }
 
     private static String contains(String value) {
-        return "%" + CustomerSpecifications.escapeLike(value) + "%";
+        return SearchKeys.containsPattern(value);
     }
 }

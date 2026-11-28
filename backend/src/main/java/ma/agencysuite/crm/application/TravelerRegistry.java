@@ -14,7 +14,6 @@ import ma.agencysuite.crm.application.PossibleDuplicateException.Criterion;
 import ma.agencysuite.crm.application.PossibleDuplicateException.TravelerCandidate;
 import ma.agencysuite.crm.domain.Customer;
 import ma.agencysuite.crm.domain.CustomerTraveler;
-import ma.agencysuite.crm.domain.NameKeys;
 import ma.agencysuite.crm.domain.Traveler;
 import ma.agencysuite.crm.domain.TravelerData;
 import ma.agencysuite.crm.infrastructure.CrmConstraints;
@@ -29,6 +28,7 @@ import ma.agencysuite.shared.security.PermissionCode;
 import ma.agencysuite.shared.security.UserContext;
 import ma.agencysuite.shared.tenant.AgencyId;
 import ma.agencysuite.shared.tenant.TenantContext;
+import ma.agencysuite.shared.text.SearchKeys;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -144,7 +144,7 @@ public class TravelerRegistry {
         CustomerRegistry.checkVersion(traveler, id, traveler.getVersion(), version);
         boolean replaceBirthDate = checkBirthDateWrite(data);
         // Avant la modification : une requete sur une entite modifiee declencherait son ecriture.
-        String nameKey = NameKeys.of(data.lastName(), data.firstName());
+        String nameKey = SearchKeys.of(data.lastName(), data.firstName());
         String email = EmailAddresses.normalize(data.email());
         String phone = PhoneNumbers.normalize(data.phone());
         LocalDate sentBirthDate = replaceBirthDate ? data.birthDate() : null;

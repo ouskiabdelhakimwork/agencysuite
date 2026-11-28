@@ -8,6 +8,7 @@ import java.util.UUID;
 import ma.agencysuite.crm.domain.Customer;
 import ma.agencysuite.crm.domain.CustomerType;
 import ma.agencysuite.shared.contact.PhoneNumbers;
+import ma.agencysuite.shared.text.SearchKeys;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -37,7 +38,7 @@ public final class CustomerSpecifications {
             }
             String text = q == null ? "" : q.strip();
             if (!text.isEmpty()) {
-                String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
+                String pattern = SearchKeys.containsPattern(text.toLowerCase(Locale.ROOT));
                 List<Predicate> any = new ArrayList<>();
                 for (String field : List.of("name", "email", "phone", "ice")) {
                     any.add(cb.like(cb.lower(root.get(field)), pattern, ESCAPE));
@@ -47,9 +48,5 @@ public final class CustomerSpecifications {
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
-    }
-
-    static String escapeLike(String value) {
-        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

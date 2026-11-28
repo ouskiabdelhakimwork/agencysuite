@@ -27,5 +27,13 @@ public enum AuditAction {
     /** Voyageur archive (module crm, via AuditableEvent ; details vides). */
     TRAVELER_ARCHIVED,
     /** Voyageur restaure (module crm, via AuditableEvent ; details vides). */
-    TRAVELER_RESTORED
+    TRAVELER_RESTORED,
+    /** Fournisseur archive (module supplier, via AuditableEvent ; details : type). */
+    SUPPLIER_ARCHIVED,
+    /** Fournisseur restaure (module supplier, via AuditableEvent ; details : type). */
+    SUPPLIER_RESTORED,
+    /** Prestation archivee (module supplier, via AuditableEvent ; details : type). */
+    PRODUCT_ARCHIVED,
+    /** Prestation restauree (module supplier, via AuditableEvent ; details : type). */
+    PRODUCT_RESTORED
 }

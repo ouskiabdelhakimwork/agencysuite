@@ -11,6 +11,7 @@ import java.util.Objects;
 import ma.agencysuite.shared.contact.EmailAddresses;
 import ma.agencysuite.shared.contact.PhoneNumbers;
 import ma.agencysuite.shared.persistence.AuthoredAgencyEntity;
+import ma.agencysuite.shared.text.SearchKeys;
 
 /**
  * Voyageur de l'agence (etape 5, lot 2) : identite en lettres latines et arabes, date de naissance,
@@ -107,7 +108,7 @@ public class Traveler extends AuthoredAgencyEntity {
         this.firstName = Texts.required(data.firstName(), "firstName");
         this.lastNameAr = Texts.trimToNull(data.lastNameAr());
         this.firstNameAr = Texts.trimToNull(data.firstNameAr());
-        this.nameKey = NameKeys.of(lastName, firstName);
+        this.nameKey = SearchKeys.of(lastName, firstName);
         this.gender = data.gender();
         if (replaceBirthFields) {
             this.birthDate = data.birthDate();

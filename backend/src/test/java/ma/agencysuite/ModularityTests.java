@@ -28,6 +28,17 @@ class ModularityTests {
         assertThat(directDependencies("iam")).doesNotContain("crm");
     }
 
+    /**
+     * Etape 5, lot 3 : supplier ne s'appuie que sur le noyau partage (ni crm ni iam), et crm reste
+     * limite a shared apres le deplacement de SearchKeys.
+     */
+    @Test
+    void supplierDependsOnlyOnSharedAndIamDoesNotDependOnSupplier() {
+        assertThat(directDependencies("supplier")).containsExactly("shared");
+        assertThat(directDependencies("crm")).containsExactly("shared");
+        assertThat(directDependencies("iam")).doesNotContain("supplier");
+    }
+
     private static java.util.List<String> directDependencies(String moduleName) {
         ApplicationModule module = MODULES.getModuleByName(moduleName).orElseThrow();
         return module.getDirectDependencies(MODULES).uniqueModules()

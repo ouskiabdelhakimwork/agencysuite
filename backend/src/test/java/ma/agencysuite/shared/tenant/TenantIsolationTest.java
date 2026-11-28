@@ -342,6 +342,106 @@ class TenantIsolationTest {
         }
     }
 
+    /** Tables du module supplier (etape 5, lot 3) : politique attendue sur chacune. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void supplierTablesHaveTheirPolicy() {
+        List<Object[]> policies = asPlatform(() -> entityManager.createNativeQuery("""
+                SELECT tablename, policyname FROM pg_policies
+                WHERE schemaname = 'public' AND tablename IN ('supplier', 'product', 'rate')
+                ORDER BY tablename
+                """).getResultList());
+
+        assertThat(policies)
+                .extracting(row -> row[0] + ":" + row[1])
+                .containsExactly("product:tenant_isolation", "rate:tenant_isolation", "supplier:tenant_isolation");
+    }
+
+    /**
+     * Une prestation reste dans l'agence de son fournisseur et un tarif dans celle de sa prestation
+     * (cles composees avec agency_id, migration V9), meme en perimetre plateforme ou la RLS laisse
+     * tout passer.
+     */
+    @Test
+    void productsAndRatesCannotCrossAgencies() {
+        UUID supplierOfA = insertSupplier(agencyA);
+        UUID productOfA = insertProduct(agencyA, supplierOfA);
+        try {
+            assertThatThrownBy(() -> insertProduct(agencyB, supplierOfA))
+                    .rootCause()
+                    .hasMessageContaining("fk_product_supplier_same_agency");
+            assertThatThrownBy(() -> insertRate(agencyB, productOfA))
+                    .rootCause()
+                    .hasMessageContaining("fk_rate_product_same_agency");
+        } finally {
+            deleteRow("product", productOfA);
+            deleteRow("supplier", supplierOfA);
+        }
+    }
+
+    /** Fournisseurs, prestations et tarifs d'une autre agence : invisibles et non modifiables en SQL direct. */
+    @Test
+    void suppliersProductsAndRatesAreIsolatedInSql() {
+        UUID supplierOfA = insertSupplier(agencyA);
+        UUID productOfA = insertProduct(agencyA, supplierOfA);
+        UUID rateOfA = insertRate(agencyA, productOfA);
+        try {
+            for (String table : List.of("supplier", "product", "rate")) {
+                Number seenByB = asAgency(agencyB, () -> (Number) entityManager
+                        .createNativeQuery("SELECT count(*) FROM " + table).getSingleResult());
+                Number seenByA = asAgency(agencyA, () -> (Number) entityManager
+                        .createNativeQuery("SELECT count(*) FROM " + table).getSingleResult());
+                assertThat(seenByB.longValue()).as(table).isZero();
+                assertThat(seenByA.longValue()).as(table).isEqualTo(1);
+            }
+            int updatedByB = asAgency(agencyB, () -> entityManager
+                    .createNativeQuery("UPDATE rate SET purchase_amount = 1 WHERE id = :id")
+                    .setParameter("id", rateOfA).executeUpdate());
+            assertThat(updatedByB).isZero();
+            assertThatThrownBy(() -> asAgency(agencyB, () -> entityManager.createNativeQuery("""
+                    INSERT INTO supplier (id, agency_id, type, name, name_key, created_at, updated_at, version)
+                    VALUES (:id, :a, 'HOTEL', 'Intrus', 'intrus', now(), now(), 0)
+                    """).setParameter("id", UUID.randomUUID()).setParameter("a", agencyA.value()).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("row-level security");
+        } finally {
+            deleteRow("rate", rateOfA);
+            deleteRow("product", productOfA);
+            deleteRow("supplier", supplierOfA);
+        }
+    }
+
+    private UUID insertSupplier(AgencyId agency) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO supplier (id, agency_id, type, name, name_key, created_at, updated_at, version)
+                VALUES (:id, :agency, 'HOTEL', 'Hotel Test', 'hotel test', now(), now(), 0)
+                """).setParameter("id", id).setParameter("agency", agency.value()).executeUpdate());
+        return id;
+    }
+
+    private UUID insertProduct(AgencyId agency, UUID supplier) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO product (id, agency_id, supplier_id, type, name, search_key, created_at, updated_at, version)
+                VALUES (:id, :agency, :supplier, 'ACCOMMODATION', jsonb_build_object('fr', 'Chambre'), 'chambre', now(), now(), 0)
+                """).setParameter("id", id).setParameter("agency", agency.value()).setParameter("supplier", supplier)
+                .executeUpdate());
+        return id;
+    }
+
+    private UUID insertRate(AgencyId agency, UUID product) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO rate (id, agency_id, product_id, basis, valid_from, valid_to, purchase_amount,
+                                  purchase_currency, created_at, updated_at, version)
+                VALUES (:id, :agency, :product, 'DOUBLE', DATE '2027-01-01', DATE '2027-06-30', 95, 'MAD',
+                        now(), now(), 0)
+                """).setParameter("id", id).setParameter("agency", agency.value()).setParameter("product", product)
+                .executeUpdate());
+        return id;
+    }
+
     private UUID insertTraveler(AgencyId agency) {
         UUID id = UUID.randomUUID();
         asPlatform(() -> entityManager.createNativeQuery("""
