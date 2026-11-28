@@ -207,9 +207,13 @@ class RequestApiTest {
                 .andExpect(jsonPath("$.items[*].id").value(containsInAnyOrder(quoting.toString(), lost.toString())));
         api.list(agency(agencyA), "channel=EMAIL&status=QUOTING")
                 .andExpect(jsonPath("$.items[*].id").value(contains(quoting.toString())));
-        // Statut inconnu : 400 de Spring (MethodArgumentTypeMismatchException), sans type traduit : point signale
-        // au compte rendu (comportement commun a tous les filtres enumeres, hors perimetre du lot).
-        api.list(agency(agencyA), "status=DONE").andExpect(status().isBadRequest());
+        // Statut inconnu : 400 validation-failed (MethodArgumentTypeMismatchException traduite).
+        customers.expectProblem(api.list(agency(agencyA), "status=DONE"), 400, "validation-failed");
+    }
+
+    @Test
+    void anUnknownStatusInTheUrlIsATranslatedValidationErrorWithoutTheValue() throws Exception {
+        customers.expectUnrecognizedParameter(agency(agencyA), RequestApi.REQUESTS, "status", "DONE");
     }
 
     @Test

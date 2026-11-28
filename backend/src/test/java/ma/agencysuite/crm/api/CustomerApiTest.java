@@ -227,7 +227,12 @@ class CustomerApiTest {
                 .andExpect(jsonPath("$.items[*].name").value(org.hamcrest.Matchers.contains("Entreprise Test")));
         api.list(agency(agencyA), "archived=true")
                 .andExpect(jsonPath("$.items[*].name").value(org.hamcrest.Matchers.contains("Archivee Test")));
-        api.list(agency(agencyA), "type=PIGEON").andExpect(status().isBadRequest());
+        api.expectProblem(api.list(agency(agencyA), "type=PIGEON"), 400, "validation-failed");
+    }
+
+    @Test
+    void anUnknownTypeInTheUrlIsATranslatedValidationErrorWithoutTheValue() throws Exception {
+        api.expectUnrecognizedParameter(agency(agencyA), CrmApi.CUSTOMERS, "type", "FOO");
     }
 
     @Test

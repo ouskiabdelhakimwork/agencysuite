@@ -132,6 +132,30 @@ public final class CrmApi {
                 .andReturn().getResponse().getContentAsString();
     }
 
+    /**
+     * Valeur non reconnue dans un parametre d'URL (filtre enumere) : 400 validation-failed, titre et detail
+     * traduits en FR, AR et EN, sans la valeur recue ni le message technique de Spring dans la reponse.
+     */
+    public void expectUnrecognizedParameter(JwtRequestPostProcessor token, String path, String parameter, String value)
+            throws Exception {
+        String[][] languages = {
+                {"fr", "Données invalides",
+                        "Un ou plusieurs paramètres de la requête ont une valeur non reconnue ou un format invalide."},
+                {"ar", "بيانات غير صالحة", "معامل واحد أو أكثر في الطلب له قيمة غير معروفة أو تنسيق غير صالح."},
+                {"en", "Invalid data",
+                        "One or more request parameters have an unrecognized value or an invalid format."}};
+        for (String[] expected : languages) {
+            String body = expectProblem(mvc.perform(MockMvcRequestBuildersAccess.get(path).param(parameter, value)
+                            .with(token).header("Accept-Language", expected[0]))
+                    .andExpect(jsonPath("$.title").value(expected[1]))
+                    .andExpect(jsonPath("$.detail").value(expected[2])), 400, "validation-failed");
+            org.assertj.core.api.Assertions.assertThat(body)
+                    .doesNotContain(value)
+                    .doesNotContain("Failed to convert")
+                    .doesNotContain("Exception");
+        }
+    }
+
     public MockMvc mvc() {
         return mvc;
     }
