@@ -269,6 +269,96 @@ class TenantIsolationTest {
         }
     }
 
+    /** Tables des voyageurs (etape 5, lot 2) : politique attendue sur chacune. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void travelerTablesHaveTheirPolicy() {
+        List<Object[]> policies = asPlatform(() -> entityManager.createNativeQuery("""
+                SELECT tablename, policyname FROM pg_policies
+                WHERE schemaname = 'public' AND tablename IN ('traveler', 'customer_traveler')
+                ORDER BY tablename
+                """).getResultList());
+
+        assertThat(policies)
+                .extracting(row -> row[0] + ":" + row[1])
+                .containsExactly("customer_traveler:tenant_isolation", "traveler:tenant_isolation");
+    }
+
+    /**
+     * Un lien voyageur &harr; client ne traverse jamais deux agences (cles composees avec agency_id
+     * vers customer et traveler, migration V8), meme en perimetre plateforme ou la RLS laisse tout
+     * passer.
+     */
+    @Test
+    void aTravelerLinkCannotCrossAgencies() {
+        UUID customerOfA = insertCustomer(agencyA, null);
+        UUID travelerOfB = insertTraveler(agencyB);
+        try {
+            assertThatThrownBy(() -> insertLink(agencyA, customerOfA, travelerOfB))
+                    .rootCause()
+                    .hasMessageContaining("fk_customer_traveler_traveler_same_agency");
+            assertThatThrownBy(() -> insertLink(agencyB, customerOfA, travelerOfB))
+                    .rootCause()
+                    .hasMessageContaining("fk_customer_traveler_customer_same_agency");
+        } finally {
+            deleteRow("traveler", travelerOfB);
+            deleteRow("customer", customerOfA);
+        }
+    }
+
+    /** Liens et voyageurs d'une autre agence : invisibles et non modifiables, meme en SQL direct. */
+    @Test
+    void travelersAndLinksAreIsolatedInSql() {
+        UUID customerOfA = insertCustomer(agencyA, null);
+        UUID travelerOfA = insertTraveler(agencyA);
+        insertLink(agencyA, customerOfA, travelerOfA);
+        try {
+            Number travelersSeenByB = asAgency(agencyB, () -> (Number) entityManager
+                    .createNativeQuery("SELECT count(*) FROM traveler").getSingleResult());
+            Number linksSeenByB = asAgency(agencyB, () -> (Number) entityManager
+                    .createNativeQuery("SELECT count(*) FROM customer_traveler").getSingleResult());
+            int deletedByB = asAgency(agencyB, () -> entityManager
+                    .createNativeQuery("DELETE FROM customer_traveler WHERE traveler_id = :id")
+                    .setParameter("id", travelerOfA).executeUpdate());
+            Number linksSeenByA = asAgency(agencyA, () -> (Number) entityManager
+                    .createNativeQuery("SELECT count(*) FROM customer_traveler").getSingleResult());
+
+            assertThat(travelersSeenByB.longValue()).isZero();
+            assertThat(linksSeenByB.longValue()).isZero();
+            assertThat(deletedByB).isZero();
+            assertThat(linksSeenByA.longValue()).isEqualTo(1);
+            assertThatThrownBy(() -> asAgency(agencyB, () -> entityManager.createNativeQuery("""
+                    INSERT INTO customer_traveler (agency_id, customer_id, traveler_id, created_at)
+                    VALUES (:a, :customer, :traveler, now())
+                    """).setParameter("a", agencyA.value()).setParameter("customer", customerOfA)
+                    .setParameter("traveler", UUID.randomUUID()).executeUpdate()))
+                    .rootCause()
+                    .hasMessageContaining("row-level security");
+        } finally {
+            asPlatform(() -> entityManager.createNativeQuery("DELETE FROM customer_traveler WHERE traveler_id = :id")
+                    .setParameter("id", travelerOfA).executeUpdate());
+            deleteRow("traveler", travelerOfA);
+            deleteRow("customer", customerOfA);
+        }
+    }
+
+    private UUID insertTraveler(AgencyId agency) {
+        UUID id = UUID.randomUUID();
+        asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO traveler (id, agency_id, last_name, first_name, name_key, created_at, updated_at, version)
+                VALUES (:id, :agency, 'Voyageur', 'Test', 'voyageur test', now(), now(), 0)
+                """).setParameter("id", id).setParameter("agency", agency.value()).executeUpdate());
+        return id;
+    }
+
+    private int insertLink(AgencyId agency, UUID customer, UUID traveler) {
+        return asPlatform(() -> entityManager.createNativeQuery("""
+                INSERT INTO customer_traveler (agency_id, customer_id, traveler_id, created_at)
+                VALUES (:agency, :customer, :traveler, now())
+                """).setParameter("agency", agency.value()).setParameter("customer", customer)
+                .setParameter("traveler", traveler).executeUpdate());
+    }
+
     private UUID insertCustomer(AgencyId agency, UUID owner) {
         UUID id = UUID.randomUUID();
         asPlatform(() -> {

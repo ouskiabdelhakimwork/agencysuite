@@ -23,5 +23,9 @@ public enum AuditAction {
     /** Client archive (module crm, via AuditableEvent). */
     CUSTOMER_ARCHIVED,
     /** Client restaure (module crm, via AuditableEvent). */
-    CUSTOMER_RESTORED
+    CUSTOMER_RESTORED,
+    /** Voyageur archive (module crm, via AuditableEvent ; details vides). */
+    TRAVELER_ARCHIVED,
+    /** Voyageur restaure (module crm, via AuditableEvent ; details vides). */
+    TRAVELER_RESTORED
 }

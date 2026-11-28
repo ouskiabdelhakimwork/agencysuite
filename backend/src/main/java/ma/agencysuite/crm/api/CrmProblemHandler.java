@@ -4,10 +4,13 @@ import java.net.URI;
 import java.util.Locale;
 import ma.agencysuite.crm.application.ContactNotFoundException;
 import ma.agencysuite.crm.application.ContactsCompanyOnlyException;
+import ma.agencysuite.crm.application.CustomerArchivedException;
 import ma.agencysuite.crm.application.CustomerHasContactsException;
 import ma.agencysuite.crm.application.CustomerNotFoundException;
+import ma.agencysuite.crm.application.IdentityReadRequiredException;
 import ma.agencysuite.crm.application.InvalidOwnerException;
 import ma.agencysuite.crm.application.PossibleDuplicateException;
+import ma.agencysuite.crm.application.TravelerNotFoundException;
 import ma.agencysuite.shared.i18n.SupportedLocale;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
@@ -31,12 +34,16 @@ class CrmProblemHandler {
         this.messages = messages;
     }
 
-    @ExceptionHandler({CustomerNotFoundException.class, ContactNotFoundException.class})
+    @ExceptionHandler({CustomerNotFoundException.class, ContactNotFoundException.class,
+            TravelerNotFoundException.class})
     ResponseEntity<ProblemDetail> notFound(RuntimeException e, Locale locale) {
         return problem(HttpStatus.NOT_FOUND, "not-found", locale);
     }
 
-    /** Les candidats (identifiant, nom, criteres communs) sont de la meme agence que l'appelant. */
+    /**
+     * Les candidats (clients : identifiant, nom ; voyageurs : identifiant, nom, prenom ; criteres communs)
+     * sont de la meme agence que l'appelant. Jamais de date de naissance.
+     */
     @ExceptionHandler(PossibleDuplicateException.class)
     ResponseEntity<ProblemDetail> possibleDuplicate(PossibleDuplicateException e, Locale locale) {
         ResponseEntity<ProblemDetail> response = problem(HttpStatus.CONFLICT, "possible-duplicate", locale);
@@ -54,17 +61,31 @@ class CrmProblemHandler {
         return problem(HttpStatus.CONFLICT, "customer-has-contacts", locale);
     }
 
+    @ExceptionHandler(CustomerArchivedException.class)
+    ResponseEntity<ProblemDetail> customerArchived(CustomerArchivedException e, Locale locale) {
+        return problem(HttpStatus.CONFLICT, "customer-archived", locale);
+    }
+
+    /** Meme forme que la garde @RequiresPermission (module iam) : code permission-denied et permission. */
+    @ExceptionHandler(IdentityReadRequiredException.class)
+    ResponseEntity<ProblemDetail> identityReadRequired(IdentityReadRequiredException e, Locale locale) {
+        String code = e.getPermission().code();
+        ResponseEntity<ProblemDetail> response = problem(HttpStatus.FORBIDDEN, "permission-denied", locale, code);
+        response.getBody().setProperty("permission", code);
+        return response;
+    }
+
     @ExceptionHandler(InvalidOwnerException.class)
     ResponseEntity<ProblemDetail> invalidOwner(InvalidOwnerException e, Locale locale) {
         return problem(HttpStatus.BAD_REQUEST, "invalid-owner", locale);
     }
 
-    private ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, Locale requested) {
+    private ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, Locale requested, Object... args) {
         Locale locale = SupportedLocale.from(requested).locale();
         ProblemDetail problem = ProblemDetail.forStatus(status);
         problem.setType(URI.create(TYPE_PREFIX + code));
         problem.setTitle(messages.getMessage("problem." + code + ".title", null, locale));
-        problem.setDetail(messages.getMessage("problem." + code + ".detail", null, locale));
+        problem.setDetail(messages.getMessage("problem." + code + ".detail", args, locale));
         return ResponseEntity.status(status).body(problem);
     }
 }
